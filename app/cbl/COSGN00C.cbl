@@ -1,260 +1,168 @@
-      ******************************************************************        
-      * Program     : COSGN00C.CBL
-      * Application : CardDemo
-      * Type        : CICS COBOL Program
-      * Function    : Signon Screen for the CardDemo Application
-      ******************************************************************
-      * Copyright Amazon.com, Inc. or its affiliates.                   
-      * All Rights Reserved.                                            
-      *                                                                 
-      * Licensed under the Apache License, Version 2.0 (the "License"). 
-      * You may not use this file except in compliance with the License.
-      * You may obtain a copy of the License at                         
-      *                                                                 
-      *    http://www.apache.org/licenses/LICENSE-2.0                   
-      *                                                                 
-      * Unless required by applicable law or agreed to in writing,      
-      * software distributed under the License is distributed on an     
-      * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,    
-      * either express or implied. See the License for the specific     
-      * language governing permissions and limitations under the License
-      ****************************************************************** 
-       IDENTIFICATION DIVISION.
-       PROGRAM-ID. COSGN00C.
-       AUTHOR.     AWS.
+>>SOURCE FREE
+IDENTIFICATION DIVISION.
+PROGRAM-ID. COSGN00C.
+AUTHOR. AWS.
 
-       ENVIRONMENT DIVISION.
-       CONFIGURATION SECTION.
+ENVIRONMENT DIVISION.
+INPUT-OUTPUT SECTION.
+FILE-CONTROL.
+    SELECT USRSEC-FILE ASSIGN TO DYNAMIC WS-USRSEC-PATH
+        ORGANIZATION IS LINE SEQUENTIAL
+        FILE STATUS IS WS-USRSEC-STATUS.
 
-       DATA DIVISION.
-      *----------------------------------------------------------------*
-      *                     WORKING STORAGE SECTION
-      *----------------------------------------------------------------*
-       WORKING-STORAGE SECTION.
+DATA DIVISION.
+FILE SECTION.
+FD USRSEC-FILE.
+01 USRSEC-RECORD PIC X(80).
 
-       01 WS-VARIABLES.
-         05 WS-PGMNAME                 PIC X(08) VALUE 'COSGN00C'.
-         05 WS-TRANID                  PIC X(04) VALUE 'CC00'.
-         05 WS-MESSAGE                 PIC X(80) VALUE SPACES.
-         05 WS-USRSEC-FILE             PIC X(08) VALUE 'USRSEC  '.
-         05 WS-ERR-FLG                 PIC X(01) VALUE 'N'.
-           88 ERR-FLG-ON                         VALUE 'Y'.
-           88 ERR-FLG-OFF                        VALUE 'N'.
-         05 WS-RESP-CD                 PIC S9(09) COMP VALUE ZEROS.
-         05 WS-REAS-CD                 PIC S9(09) COMP VALUE ZEROS.
-         05 WS-USER-ID                 PIC X(08).
-         05 WS-USER-PWD                PIC X(08).
+WORKING-STORAGE SECTION.
+01 WS-VARIABLES.
+   05 WS-USRSEC-PATH       PIC X(256) VALUE SPACES.
+   05 WS-USRSEC-STATUS     PIC X(02) VALUE SPACES.
+   05 WS-USER-ID           PIC X(08) VALUE SPACES.
+   05 WS-USER-PWD          PIC X(08) VALUE SPACES.
+   05 WS-AUTHENTICATED     PIC X VALUE 'N'.
+      88 AUTHENTICATED                VALUE 'Y'.
+      88 NOT-AUTHENTICATED            VALUE 'N'.
+   05 WS-EOF               PIC X VALUE 'N'.
+      88 END-OF-USRSEC                VALUE 'Y'.
+      88 MORE-USRSEC                  VALUE 'N'.
+   05 WS-MESSAGE           PIC X(80) VALUE SPACES.
 
-       COPY COCOM01Y.
+01 CARDDEMO-COMMAREA.
+   05 CDEMO-GENERAL-INFO.
+      10 CDEMO-FROM-TRANID             PIC X(04).
+      10 CDEMO-FROM-PROGRAM            PIC X(08).
+      10 CDEMO-TO-TRANID               PIC X(04).
+      10 CDEMO-TO-PROGRAM              PIC X(08).
+      10 CDEMO-USER-ID                 PIC X(08).
+      10 CDEMO-USER-TYPE               PIC X(01).
+         88 CDEMO-USRTYP-ADMIN         VALUE 'A'.
+         88 CDEMO-USRTYP-USER          VALUE 'U'.
+      10 CDEMO-PGM-CONTEXT             PIC 9(01).
+         88 CDEMO-PGM-ENTER            VALUE 0.
+         88 CDEMO-PGM-REENTER          VALUE 1.
+   05 CDEMO-CUSTOMER-INFO.
+      10 CDEMO-CUST-ID                 PIC 9(09).
+      10 CDEMO-CUST-FNAME              PIC X(25).
+      10 CDEMO-CUST-MNAME              PIC X(25).
+      10 CDEMO-CUST-LNAME              PIC X(25).
+   05 CDEMO-ACCOUNT-INFO.
+      10 CDEMO-ACCT-ID                 PIC 9(11).
+      10 CDEMO-ACCT-STATUS             PIC X(01).
+   05 CDEMO-CARD-INFO.
+      10 CDEMO-CARD-NUM                PIC 9(16).
+   05 CDEMO-MORE-INFO.
+      10 CDEMO-LAST-MAP                PIC X(07).
+      10 CDEMO-LAST-MAPSET             PIC X(07).
 
-       COPY COSGN00.
+01 SEC-USER-DATA.
+   05 SEC-USR-ID                 PIC X(08).
+   05 SEC-USR-FNAME              PIC X(20).
+   05 SEC-USR-LNAME              PIC X(20).
+   05 SEC-USR-PWD                PIC X(08).
+   05 SEC-USR-TYPE               PIC X(01).
+   05 SEC-USR-FILLER             PIC X(23).
 
-       COPY COTTL01Y.
-       COPY CSDAT01Y.
-       COPY CSMSG01Y.
-       COPY CSUSR01Y.
+PROCEDURE DIVISION.
+MAIN-PARA.
+    PERFORM INITIALIZE-USRSEC-PATH
+    PERFORM ENSURE-USRSEC-FILE
 
-       COPY DFHAID.
-       COPY DFHBMSCA.
-      *COPY DFHATTR.
+    DISPLAY "CardDemo GNUCobol Sign-on"
+    DISPLAY "User ID  : " WITH NO ADVANCING
+    ACCEPT WS-USER-ID
+    MOVE FUNCTION UPPER-CASE(WS-USER-ID) TO WS-USER-ID
 
-      *----------------------------------------------------------------*
-      *                        LINKAGE SECTION
-      *----------------------------------------------------------------*
-       LINKAGE SECTION.
-       01  DFHCOMMAREA.
-         05  LK-COMMAREA                           PIC X(01)
-             OCCURS 1 TO 32767 TIMES DEPENDING ON EIBCALEN.
+    DISPLAY "Password : " WITH NO ADVANCING
+    ACCEPT WS-USER-PWD
+    MOVE FUNCTION UPPER-CASE(WS-USER-PWD) TO WS-USER-PWD
 
-      *----------------------------------------------------------------*
-      *                      PROCEDURE DIVISION
-      *----------------------------------------------------------------*
-       PROCEDURE DIVISION.
-       MAIN-PARA.
+    PERFORM AUTHENTICATE-USER
 
-           SET ERR-FLG-OFF TO TRUE
+    IF NOT AUTHENTICATED
+        DISPLAY "Sign-on failed: invalid user ID or password."
+        GOBACK
+    END-IF
 
-           MOVE SPACES TO WS-MESSAGE
-                          ERRMSGO OF COSGN0AO
+    IF CDEMO-USRTYP-ADMIN
+        CALL "COADM01C" USING CARDDEMO-COMMAREA
+    ELSE
+        CALL "COMEN01C" USING CARDDEMO-COMMAREA
+    END-IF
 
-           IF EIBCALEN = 0
-               MOVE LOW-VALUES TO COSGN0AO
-               MOVE -1       TO USERIDL OF COSGN0AI
-               PERFORM SEND-SIGNON-SCREEN
-           ELSE
-               EVALUATE EIBAID
-                   WHEN DFHENTER
-                       PERFORM PROCESS-ENTER-KEY
-                   WHEN DFHPF3
-                       MOVE CCDA-MSG-THANK-YOU        TO WS-MESSAGE
-                       PERFORM SEND-PLAIN-TEXT
-                   WHEN OTHER
-                       MOVE 'Y'                       TO WS-ERR-FLG
-                       MOVE CCDA-MSG-INVALID-KEY      TO WS-MESSAGE
-                       PERFORM SEND-SIGNON-SCREEN
-               END-EVALUATE
-           END-IF.
+    GOBACK.
 
-           EXEC CICS RETURN
-                     TRANSID (WS-TRANID)
-                     COMMAREA (CARDDEMO-COMMAREA)
-                     LENGTH(LENGTH OF CARDDEMO-COMMAREA)
-           END-EXEC.
+INITIALIZE-USRSEC-PATH.
+    ACCEPT WS-USRSEC-PATH FROM ENVIRONMENT "CARDDEMO_USRSEC_PATH"
+    IF WS-USRSEC-PATH = SPACES
+        MOVE "app/data/ASCII/usrsec.dat" TO WS-USRSEC-PATH
+    END-IF.
 
+ENSURE-USRSEC-FILE.
+    OPEN INPUT USRSEC-FILE
+    EVALUATE WS-USRSEC-STATUS
+        WHEN "00"
+            CLOSE USRSEC-FILE
+        WHEN "35"
+            PERFORM WRITE-DEFAULT-USERS
+        WHEN OTHER
+            DISPLAY "Unable to open user security file. Status: "
+                WS-USRSEC-STATUS
+            STOP RUN
+    END-EVALUATE.
 
-      *----------------------------------------------------------------*
-      *                      PROCESS-ENTER-KEY
-      *----------------------------------------------------------------*
-       PROCESS-ENTER-KEY.
+WRITE-DEFAULT-USERS.
+    OPEN OUTPUT USRSEC-FILE
+    IF WS-USRSEC-STATUS NOT = "00"
+        DISPLAY "Unable to create user security file. Status: "
+            WS-USRSEC-STATUS
+        STOP RUN
+    END-IF
 
-           EXEC CICS RECEIVE
-                     MAP('COSGN0A')
-                     MAPSET('COSGN00')
-                     RESP(WS-RESP-CD)
-                     RESP2(WS-REAS-CD)
-           END-EXEC.
+    INITIALIZE SEC-USER-DATA
+    MOVE "ADMIN001" TO SEC-USR-ID
+    MOVE "ADMIN" TO SEC-USR-FNAME
+    MOVE "USER" TO SEC-USR-LNAME
+    MOVE "PASSWORD" TO SEC-USR-PWD
+    MOVE "A" TO SEC-USR-TYPE
+    WRITE USRSEC-RECORD FROM SEC-USER-DATA
 
-           EVALUATE TRUE
-               WHEN USERIDI OF COSGN0AI = SPACES OR LOW-VALUES
-                   MOVE 'Y'      TO WS-ERR-FLG
-                   MOVE 'Please enter User ID ...' TO WS-MESSAGE
-                   MOVE -1       TO USERIDL OF COSGN0AI
-                   PERFORM SEND-SIGNON-SCREEN
-               WHEN PASSWDI OF COSGN0AI = SPACES OR LOW-VALUES
-                   MOVE 'Y'      TO WS-ERR-FLG
-                   MOVE 'Please enter Password ...' TO WS-MESSAGE
-                   MOVE -1       TO PASSWDL OF COSGN0AI
-                   PERFORM SEND-SIGNON-SCREEN
-               WHEN OTHER
-                   CONTINUE
-           END-EVALUATE.
+    INITIALIZE SEC-USER-DATA
+    MOVE "USER0001" TO SEC-USR-ID
+    MOVE "CARD" TO SEC-USR-FNAME
+    MOVE "USER" TO SEC-USR-LNAME
+    MOVE "PASSWORD" TO SEC-USR-PWD
+    MOVE "U" TO SEC-USR-TYPE
+    WRITE USRSEC-RECORD FROM SEC-USER-DATA
 
-           MOVE FUNCTION UPPER-CASE(USERIDI OF COSGN0AI) TO
-                           WS-USER-ID
-                           CDEMO-USER-ID
-           MOVE FUNCTION UPPER-CASE(PASSWDI OF COSGN0AI) TO
-                           WS-USER-PWD
+    CLOSE USRSEC-FILE.
 
-           IF NOT ERR-FLG-ON
-               PERFORM READ-USER-SEC-FILE
-           END-IF.
+AUTHENTICATE-USER.
+    SET NOT-AUTHENTICATED TO TRUE
+    SET MORE-USRSEC TO TRUE
+    OPEN INPUT USRSEC-FILE
+    IF WS-USRSEC-STATUS NOT = "00"
+        DISPLAY "Unable to open user security file. Status: "
+            WS-USRSEC-STATUS
+        STOP RUN
+    END-IF
 
-      *----------------------------------------------------------------*
-      *                      SEND-SIGNON-SCREEN
-      *----------------------------------------------------------------*
-       SEND-SIGNON-SCREEN.
+    PERFORM UNTIL END-OF-USRSEC OR AUTHENTICATED
+        READ USRSEC-FILE INTO SEC-USER-DATA
+            AT END
+                SET END-OF-USRSEC TO TRUE
+            NOT AT END
+                IF SEC-USR-ID = WS-USER-ID
+                    AND FUNCTION UPPER-CASE(SEC-USR-PWD) = WS-USER-PWD
+                    MOVE "CC00" TO CDEMO-FROM-TRANID
+                    MOVE "COSGN00C" TO CDEMO-FROM-PROGRAM
+                    MOVE WS-USER-ID TO CDEMO-USER-ID
+                    MOVE SEC-USR-TYPE TO CDEMO-USER-TYPE
+                    MOVE 0 TO CDEMO-PGM-CONTEXT
+                    SET AUTHENTICATED TO TRUE
+                END-IF
+        END-READ
+    END-PERFORM
 
-           PERFORM POPULATE-HEADER-INFO
-
-           MOVE WS-MESSAGE TO ERRMSGO OF COSGN0AO
-
-           EXEC CICS SEND
-                     MAP('COSGN0A')
-                     MAPSET('COSGN00')
-                     FROM(COSGN0AO)
-                     ERASE
-                     CURSOR
-           END-EXEC.
-
-      *----------------------------------------------------------------*
-      *                      SEND-PLAIN-TEXT
-      *----------------------------------------------------------------*
-       SEND-PLAIN-TEXT.
-
-           EXEC CICS SEND TEXT
-                     FROM(WS-MESSAGE)
-                     LENGTH(LENGTH OF WS-MESSAGE)
-                     ERASE
-                     FREEKB
-           END-EXEC.
-
-           EXEC CICS RETURN
-           END-EXEC.
-
-      *----------------------------------------------------------------*
-      *                      POPULATE-HEADER-INFO
-      *----------------------------------------------------------------*
-       POPULATE-HEADER-INFO.
-
-           MOVE FUNCTION CURRENT-DATE  TO WS-CURDATE-DATA
-
-           MOVE CCDA-TITLE01           TO TITLE01O OF COSGN0AO
-           MOVE CCDA-TITLE02           TO TITLE02O OF COSGN0AO
-           MOVE WS-TRANID              TO TRNNAMEO OF COSGN0AO
-           MOVE WS-PGMNAME             TO PGMNAMEO OF COSGN0AO
-
-           MOVE WS-CURDATE-MONTH       TO WS-CURDATE-MM
-           MOVE WS-CURDATE-DAY         TO WS-CURDATE-DD
-           MOVE WS-CURDATE-YEAR(3:2)   TO WS-CURDATE-YY
-
-           MOVE WS-CURDATE-MM-DD-YY    TO CURDATEO OF COSGN0AO
-
-           MOVE WS-CURTIME-HOURS       TO WS-CURTIME-HH
-           MOVE WS-CURTIME-MINUTE      TO WS-CURTIME-MM
-           MOVE WS-CURTIME-SECOND      TO WS-CURTIME-SS
-
-           MOVE WS-CURTIME-HH-MM-SS    TO CURTIMEO OF COSGN0AO
-
-           EXEC CICS ASSIGN
-               APPLID(APPLIDO OF COSGN0AO)
-           END-EXEC
-
-           EXEC CICS ASSIGN
-               SYSID(SYSIDO OF COSGN0AO)
-           END-EXEC.
-
-      *----------------------------------------------------------------*
-      *                      READ-USER-SEC-FILE
-      *----------------------------------------------------------------*
-       READ-USER-SEC-FILE.
-
-           EXEC CICS READ
-                DATASET   (WS-USRSEC-FILE)
-                INTO      (SEC-USER-DATA)
-                LENGTH    (LENGTH OF SEC-USER-DATA)
-                RIDFLD    (WS-USER-ID)
-                KEYLENGTH (LENGTH OF WS-USER-ID)
-                RESP      (WS-RESP-CD)
-                RESP2     (WS-REAS-CD)
-           END-EXEC.
-
-           EVALUATE WS-RESP-CD
-               WHEN 0
-                   IF SEC-USR-PWD = WS-USER-PWD
-                       MOVE WS-TRANID    TO CDEMO-FROM-TRANID
-                       MOVE WS-PGMNAME   TO CDEMO-FROM-PROGRAM
-                       MOVE WS-USER-ID   TO CDEMO-USER-ID
-                       MOVE SEC-USR-TYPE TO CDEMO-USER-TYPE
-                       MOVE ZEROS        TO CDEMO-PGM-CONTEXT
-
-                       IF CDEMO-USRTYP-ADMIN
-                            EXEC CICS XCTL
-                              PROGRAM ('COADM01C')
-                              COMMAREA(CARDDEMO-COMMAREA)
-                            END-EXEC
-                       ELSE
-                            EXEC CICS XCTL
-                              PROGRAM ('COMEN01C')
-                              COMMAREA(CARDDEMO-COMMAREA)
-                            END-EXEC
-                       END-IF
-                   ELSE
-                       MOVE 'Wrong Password. Try again ...' TO
-                                                          WS-MESSAGE
-                       MOVE -1       TO PASSWDL OF COSGN0AI
-                       PERFORM SEND-SIGNON-SCREEN
-                   END-IF
-               WHEN 13
-                   MOVE 'Y'      TO WS-ERR-FLG
-                   MOVE 'User not found. Try again ...' TO WS-MESSAGE
-                   MOVE -1       TO USERIDL OF COSGN0AI
-                   PERFORM SEND-SIGNON-SCREEN
-               WHEN OTHER
-                   MOVE 'Y'      TO WS-ERR-FLG
-                   MOVE 'Unable to verify the User ...' TO WS-MESSAGE
-                   MOVE -1       TO USERIDL OF COSGN0AI
-                   PERFORM SEND-SIGNON-SCREEN
-           END-EVALUATE.
-      *
-      * Ver: CardDemo_v1.0-15-g27d6c6f-68 Date: 2022-07-19 23:12:33 CDT
-      *
+    CLOSE USRSEC-FILE.

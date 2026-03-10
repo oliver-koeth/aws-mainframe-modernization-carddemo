@@ -37,6 +37,14 @@ CardDemo is a mainframe application designed to test and showcase AWS and partne
 
 The application intentionally incorporates various coding styles and patterns to exercise analysis, transformation, and migration tooling across different mainframe programming paradigms.
 
+## GNUCobol Runtime
+
+The repository now also contains a file-backed GNUCobol runtime for the migrated base-application slices. This runtime does not require CICS or BMS for the ported flows, runs directly against the flat files in `app/data/ASCII`, and includes local GNUCobol batch paths for transaction posting and transaction report generation.
+
+See [GNUCOBOL_RUNTIME.md](/Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/GNUCOBOL_RUNTIME.md) for build, run, data-path, and verification details.
+
+The GNUCobol runtime also includes local init/reset scripts so the flat-file datasets can be recreated without the original JCL setup flow.
+
 ## Technologies
 
 ### Core Technologies
@@ -395,4 +403,3 @@ The CardDemo application has been enhanced with optional features that extend it
 These optional features make CardDemo an even more useful resource for customers looking to modernize their mainframe applications. With modules for DB2, MQ, IMS DB, JCL utilities, and more data formats now available, customers can leverage CardDemo to test a wider array of mainframe migration, refactoring, replatforming, and augmentation scenarios.
 
 Last updated: April 2025
-

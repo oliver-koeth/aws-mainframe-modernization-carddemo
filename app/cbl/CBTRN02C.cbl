@@ -1,731 +1,715 @@
-      ******************************************************************
-      * Program     : CBTRN02C.CBL                                      
-      * Application : CardDemo                                          
-      * Type        : BATCH COBOL Program                                
-      * Function    : Post the records from daily transaction file.     
-      ******************************************************************
-      * Copyright Amazon.com, Inc. or its affiliates.                   
-      * All Rights Reserved.                                            
-      *                                                                 
-      * Licensed under the Apache License, Version 2.0 (the "License"). 
-      * You may not use this file except in compliance with the License.
-      * You may obtain a copy of the License at                         
-      *                                                                 
-      *    http://www.apache.org/licenses/LICENSE-2.0                   
-      *                                                                 
-      * Unless required by applicable law or agreed to in writing,      
-      * software distributed under the License is distributed on an     
-      * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,    
-      * either express or implied. See the License for the specific     
-      * language governing permissions and limitations under the License
-      ******************************************************************
-       IDENTIFICATION DIVISION.                                                 
-       PROGRAM-ID.    CBTRN02C.                                                 
-       AUTHOR.        AWS.                                                      
-                                                                                
-       ENVIRONMENT DIVISION.                                                    
-       INPUT-OUTPUT SECTION.                                                    
-       FILE-CONTROL.                                                            
-           SELECT DALYTRAN-FILE ASSIGN TO DALYTRAN                              
-                  ORGANIZATION IS SEQUENTIAL                                    
-                  ACCESS MODE  IS SEQUENTIAL                                    
-                  FILE STATUS  IS DALYTRAN-STATUS.                              
-                                                                                
-           SELECT TRANSACT-FILE ASSIGN TO TRANFILE                              
-                  ORGANIZATION IS INDEXED                                       
-                  ACCESS MODE  IS RANDOM                                        
-                  RECORD KEY   IS FD-TRANS-ID                                   
-                  FILE STATUS  IS TRANFILE-STATUS.                              
-                                                                                
-           SELECT XREF-FILE ASSIGN TO   XREFFILE                                
-                  ORGANIZATION IS INDEXED                                       
-                  ACCESS MODE  IS RANDOM                                        
-                  RECORD KEY   IS FD-XREF-CARD-NUM                              
-                  FILE STATUS  IS XREFFILE-STATUS.                              
-                                                                                
-           SELECT DALYREJS-FILE ASSIGN TO DALYREJS                              
-                  ORGANIZATION IS SEQUENTIAL                                    
-                  ACCESS MODE  IS SEQUENTIAL                                    
-                  FILE STATUS  IS DALYREJS-STATUS.                              
-                                                                                
-           SELECT ACCOUNT-FILE ASSIGN TO ACCTFILE                               
-                  ORGANIZATION IS INDEXED                                       
-                  ACCESS MODE  IS RANDOM                                        
-                  RECORD KEY   IS FD-ACCT-ID                                    
-                  FILE STATUS  IS ACCTFILE-STATUS.                              
-                                                                                
-           SELECT TCATBAL-FILE ASSIGN TO TCATBALF                               
-                  ORGANIZATION IS INDEXED                                       
-                  ACCESS MODE  IS RANDOM                                        
-                  RECORD KEY   IS FD-TRAN-CAT-KEY                               
-                  FILE STATUS  IS TCATBALF-STATUS.                              
-                                                                                
-      *                                                                         
-       DATA DIVISION.                                                           
-       FILE SECTION.                                                            
-       FD  DALYTRAN-FILE.                                                       
-       01  FD-TRAN-RECORD.                                                      
-           05 FD-TRAN-ID                        PIC X(16).                      
-           05 FD-CUST-DATA                      PIC X(334).                     
-                                                                                
-       FD  TRANSACT-FILE.                                                       
-       01  FD-TRANFILE-REC.                                                     
-           05 FD-TRANS-ID                       PIC X(16).                      
-           05 FD-ACCT-DATA                      PIC X(334).                     
-                                                                                
-       FD  XREF-FILE.                                                           
-       01  FD-XREFFILE-REC.                                                     
-           05 FD-XREF-CARD-NUM                  PIC X(16).                      
-           05 FD-XREF-DATA                      PIC X(34).                      
-                                                                                
-       FD  DALYREJS-FILE.                                                       
-       01  FD-REJS-RECORD.                                                      
-           05 FD-REJECT-RECORD                  PIC X(350).                     
-           05 FD-VALIDATION-TRAILER             PIC X(80).                      
-                                                                                
-       FD  ACCOUNT-FILE.                                                        
-       01  FD-ACCTFILE-REC.                                                     
-           05 FD-ACCT-ID                        PIC 9(11).                      
-           05 FD-ACCT-DATA                      PIC X(289).                     
-                                                                                
-       FD  TCATBAL-FILE.                                                        
-       01  FD-TRAN-CAT-BAL-RECORD.                                              
-           05 FD-TRAN-CAT-KEY.                                                  
-              10 FD-TRANCAT-ACCT-ID             PIC 9(11).                      
-              10 FD-TRANCAT-TYPE-CD             PIC X(02).                      
-              10 FD-TRANCAT-CD                  PIC 9(04).                      
-           05 FD-FD-TRAN-CAT-DATA               PIC X(33).                      
-                                                                                
-       WORKING-STORAGE SECTION.                                                 
-                                                                                
-      *****************************************************************         
-       COPY CVTRA06Y.                                                           
-       01  DALYTRAN-STATUS.                                                     
-           05  DALYTRAN-STAT1      PIC X.                                       
-           05  DALYTRAN-STAT2      PIC X.                                       
-                                                                                
-       COPY CVTRA05Y.                                                           
-       01  TRANFILE-STATUS.                                                     
-           05  TRANFILE-STAT1      PIC X.                                       
-           05  TRANFILE-STAT2      PIC X.                                       
-                                                                                
-       COPY CVACT03Y.                                                           
-       01  XREFFILE-STATUS.                                                     
-           05  XREFFILE-STAT1      PIC X.                                       
-           05  XREFFILE-STAT2      PIC X.                                       
-                                                                                
-       01  DALYREJS-STATUS.                                                     
-           05  DALYREJS-STAT1      PIC X.                                       
-           05  DALYREJS-STAT2      PIC X.                                       
-                                                                                
-       COPY CVACT01Y.                                                           
-       01  ACCTFILE-STATUS.                                                     
-           05  ACCTFILE-STAT1      PIC X.                                       
-           05  ACCTFILE-STAT2      PIC X.                                       
-                                                                                
-       COPY CVTRA01Y.                                                           
-       01  TCATBALF-STATUS.                                                     
-           05  TCATBALF-STAT1      PIC X.                                       
-           05  TCATBALF-STAT2      PIC X.                                       
-                                                                                
-       01  IO-STATUS.                                                           
-           05  IO-STAT1            PIC X.                                       
-           05  IO-STAT2            PIC X.                                       
-       01  TWO-BYTES-BINARY        PIC 9(4) BINARY.                             
-       01  TWO-BYTES-ALPHA         REDEFINES TWO-BYTES-BINARY.                  
-           05  TWO-BYTES-LEFT      PIC X.                                       
-           05  TWO-BYTES-RIGHT     PIC X.                                       
-       01  IO-STATUS-04.                                                        
-           05  IO-STATUS-0401      PIC 9   VALUE 0.                             
-           05  IO-STATUS-0403      PIC 999 VALUE 0.                             
-                                                                                
-       01  APPL-RESULT             PIC S9(9)   COMP.                            
-           88  APPL-AOK            VALUE 0.                                     
-           88  APPL-EOF            VALUE 16.                                    
-                                                                                
-       01  END-OF-FILE             PIC X(01)    VALUE 'N'.                      
-       01  ABCODE                  PIC S9(9) BINARY.                            
-       01  TIMING                  PIC S9(9) BINARY.                            
-      * T I M E S T A M P   D B 2  X(26)     EEEE-MM-DD-UU.MM.SS.HH0000         
-       01  COBOL-TS.                                                            
-           05 COB-YYYY                  PIC X(04).                              
-           05 COB-MM                    PIC X(02).                              
-           05 COB-DD                    PIC X(02).                              
-           05 COB-HH                    PIC X(02).                              
-           05 COB-MIN                   PIC X(02).                              
-           05 COB-SS                    PIC X(02).                              
-           05 COB-MIL                   PIC X(02).                              
-           05 COB-REST                  PIC X(05).                              
-       01  DB2-FORMAT-TS                PIC X(26).                              
-       01  FILLER REDEFINES DB2-FORMAT-TS.                                      
-           06 DB2-YYYY                  PIC X(004).                      E      
-           06 DB2-STREEP-1              PIC X.                           -      
-           06 DB2-MM                    PIC X(002).                      M      
-           06 DB2-STREEP-2              PIC X.                           -      
-           06 DB2-DD                    PIC X(002).                      D      
-           06 DB2-STREEP-3              PIC X.                           -      
-           06 DB2-HH                    PIC X(002).                      U      
-           06 DB2-DOT-1                 PIC X.                                  
-           06 DB2-MIN                   PIC X(002).                             
-           06 DB2-DOT-2                 PIC X.                                  
-           06 DB2-SS                    PIC X(002).                             
-           06 DB2-DOT-3                 PIC X.                                  
-           06 DB2-MIL                   PIC 9(002).                             
-           06 DB2-REST                  PIC X(04).                              
-                                                                                
-        01 REJECT-RECORD.                                                       
-           05 REJECT-TRAN-DATA          PIC X(350).                             
-           05 VALIDATION-TRAILER        PIC X(80).                              
-                                                                                
-        01 WS-VALIDATION-TRAILER.                                               
-           05 WS-VALIDATION-FAIL-REASON      PIC 9(04).                         
-           05 WS-VALIDATION-FAIL-REASON-DESC PIC X(76).                         
-                                                                                
-        01 WS-COUNTERS.                                                         
-           05 WS-TRANSACTION-COUNT          PIC 9(09) VALUE 0.                  
-           05 WS-REJECT-COUNT               PIC 9(09) VALUE 0.                  
-           05 WS-TEMP-BAL                   PIC S9(09)V99.                      
-                                                                                
-        01 WS-FLAGS.                                                            
-           05 WS-CREATE-TRANCAT-REC         PIC X(01) VALUE 'N'.                
-                                                                                
-      *****************************************************************         
-       PROCEDURE DIVISION.                                                      
-           DISPLAY 'START OF EXECUTION OF PROGRAM CBTRN02C'.                    
-           PERFORM 0000-DALYTRAN-OPEN.                                          
-           PERFORM 0100-TRANFILE-OPEN.                                          
-           PERFORM 0200-XREFFILE-OPEN.                                          
-           PERFORM 0300-DALYREJS-OPEN.                                          
-           PERFORM 0400-ACCTFILE-OPEN.                                          
-           PERFORM 0500-TCATBALF-OPEN.                                          
-                                                                                
-           PERFORM UNTIL END-OF-FILE = 'Y'                                      
-               IF  END-OF-FILE = 'N'                                            
-                   PERFORM 1000-DALYTRAN-GET-NEXT                               
-                   IF  END-OF-FILE = 'N'                                        
-                     ADD 1 TO WS-TRANSACTION-COUNT                              
-      *              DISPLAY DALYTRAN-RECORD                                    
-                     MOVE 0 TO WS-VALIDATION-FAIL-REASON                        
-                     MOVE SPACES TO WS-VALIDATION-FAIL-REASON-DESC              
-                     PERFORM 1500-VALIDATE-TRAN                                 
-                     IF WS-VALIDATION-FAIL-REASON = 0                           
-                       PERFORM 2000-POST-TRANSACTION                            
-                     ELSE                                                       
-                       ADD 1 TO WS-REJECT-COUNT                                 
-                       PERFORM 2500-WRITE-REJECT-REC                            
-                     END-IF                                                     
-                   END-IF                                                       
-               END-IF                                                           
-           END-PERFORM.                                                         
-                                                                                
-           PERFORM 9000-DALYTRAN-CLOSE.                                         
-           PERFORM 9100-TRANFILE-CLOSE.                                         
-           PERFORM 9200-XREFFILE-CLOSE.                                         
-           PERFORM 9300-DALYREJS-CLOSE.                                         
-           PERFORM 9400-ACCTFILE-CLOSE.                                         
-           PERFORM 9500-TCATBALF-CLOSE.                                         
-           DISPLAY 'TRANSACTIONS PROCESSED :' WS-TRANSACTION-COUNT              
-           DISPLAY 'TRANSACTIONS REJECTED  :' WS-REJECT-COUNT                   
-           IF WS-REJECT-COUNT > 0                                               
-              MOVE 4 TO RETURN-CODE                                             
-           END-IF                                                               
-           DISPLAY 'END OF EXECUTION OF PROGRAM CBTRN02C'.                      
-                                                                                
-           GOBACK.                                                              
-      *---------------------------------------------------------------*         
-       0000-DALYTRAN-OPEN.                                                      
-           MOVE 8 TO APPL-RESULT.                                               
-           OPEN INPUT DALYTRAN-FILE                                             
-           IF  DALYTRAN-STATUS = '00'                                           
-               MOVE 0 TO APPL-RESULT                                            
-           ELSE                                                                 
-               MOVE 12 TO APPL-RESULT                                           
-           END-IF                                                               
-           IF  APPL-AOK                                                         
-               CONTINUE                                                         
-           ELSE                                                                 
-               DISPLAY 'ERROR OPENING DALYTRAN'                                 
-               MOVE DALYTRAN-STATUS TO IO-STATUS                                
-               PERFORM 9910-DISPLAY-IO-STATUS                                   
-               PERFORM 9999-ABEND-PROGRAM                                       
-           END-IF                                                               
-           EXIT.                                                                
-      *---------------------------------------------------------------*         
-       0100-TRANFILE-OPEN.                                                      
-           MOVE 8 TO APPL-RESULT.                                               
-           OPEN OUTPUT TRANSACT-FILE                                            
-           IF  TRANFILE-STATUS = '00'                                           
-               MOVE 0 TO APPL-RESULT                                            
-           ELSE                                                                 
-               MOVE 12 TO APPL-RESULT                                           
-           END-IF                                                               
-           IF  APPL-AOK                                                         
-               CONTINUE                                                         
-           ELSE                                                                 
-               DISPLAY 'ERROR OPENING TRANSACTION FILE'                         
-               MOVE TRANFILE-STATUS TO IO-STATUS                                
-               PERFORM 9910-DISPLAY-IO-STATUS                                   
-               PERFORM 9999-ABEND-PROGRAM                                       
-           END-IF                                                               
-           EXIT.                                                                
-                                                                                
-      *---------------------------------------------------------------*         
-       0200-XREFFILE-OPEN.                                                      
-           MOVE 8 TO APPL-RESULT.                                               
-           OPEN INPUT XREF-FILE                                                 
-           IF  XREFFILE-STATUS = '00'                                           
-               MOVE 0 TO APPL-RESULT                                            
-           ELSE                                                                 
-               MOVE 12 TO APPL-RESULT                                           
-           END-IF                                                               
-           IF  APPL-AOK                                                         
-               CONTINUE                                                         
-           ELSE                                                                 
-               DISPLAY 'ERROR OPENING CROSS REF FILE'                           
-               MOVE XREFFILE-STATUS TO IO-STATUS                                
-               PERFORM 9910-DISPLAY-IO-STATUS                                   
-               PERFORM 9999-ABEND-PROGRAM                                       
-           END-IF                                                               
-           EXIT.                                                                
-      *---------------------------------------------------------------*         
-       0300-DALYREJS-OPEN.                                                      
-           MOVE 8 TO APPL-RESULT.                                               
-           OPEN OUTPUT DALYREJS-FILE                                            
-           IF  DALYREJS-STATUS = '00'                                           
-               MOVE 0 TO APPL-RESULT                                            
-           ELSE                                                                 
-               MOVE 12 TO APPL-RESULT                                           
-           END-IF                                                               
-           IF  APPL-AOK                                                         
-               CONTINUE                                                         
-           ELSE                                                                 
-               DISPLAY 'ERROR OPENING DALY REJECTS FILE'                        
-               MOVE DALYREJS-STATUS TO IO-STATUS                                
-               PERFORM 9910-DISPLAY-IO-STATUS                                   
-               PERFORM 9999-ABEND-PROGRAM                                       
-           END-IF                                                               
-           EXIT.                                                                
-      *---------------------------------------------------------------*         
-       0400-ACCTFILE-OPEN.                                                      
-           MOVE 8 TO APPL-RESULT.                                               
-           OPEN I-O  ACCOUNT-FILE                                               
-           IF  ACCTFILE-STATUS = '00'                                           
-               MOVE 0 TO APPL-RESULT                                            
-           ELSE                                                                 
-               MOVE 12 TO APPL-RESULT                                           
-           END-IF                                                               
-           IF  APPL-AOK                                                         
-               CONTINUE                                                         
-           ELSE                                                                 
-               DISPLAY 'ERROR OPENING ACCOUNT MASTER FILE'                      
-               MOVE ACCTFILE-STATUS TO IO-STATUS                                
-               PERFORM 9910-DISPLAY-IO-STATUS                                   
-               PERFORM 9999-ABEND-PROGRAM                                       
-           END-IF                                                               
-           EXIT.                                                                
-      *---------------------------------------------------------------*         
-       0500-TCATBALF-OPEN.                                                      
-           MOVE 8 TO APPL-RESULT.                                               
-           OPEN I-O  TCATBAL-FILE                                               
-           IF  TCATBALF-STATUS = '00'                                           
-               MOVE 0 TO APPL-RESULT                                            
-           ELSE                                                                 
-               MOVE 12 TO APPL-RESULT                                           
-           END-IF                                                               
-           IF  APPL-AOK                                                         
-               CONTINUE                                                         
-           ELSE                                                                 
-               DISPLAY 'ERROR OPENING TRANSACTION BALANCE FILE'                 
-               MOVE TCATBALF-STATUS TO IO-STATUS                                
-               PERFORM 9910-DISPLAY-IO-STATUS                                   
-               PERFORM 9999-ABEND-PROGRAM                                       
-           END-IF                                                               
-           EXIT.                                                                
-      *---------------------------------------------------------------*         
-       1000-DALYTRAN-GET-NEXT.                                                  
-           READ DALYTRAN-FILE INTO DALYTRAN-RECORD.                             
-           IF  DALYTRAN-STATUS = '00'                                           
-               MOVE 0 TO APPL-RESULT                                            
-      *        DISPLAY DALYTRAN-RECORD                                          
-           ELSE                                                                 
-               IF  DALYTRAN-STATUS = '10'                                       
-                   MOVE 16 TO APPL-RESULT                                       
-               ELSE                                                             
-                   MOVE 12 TO APPL-RESULT                                       
-               END-IF                                                           
-           END-IF                                                               
-           IF  APPL-AOK                                                         
-               CONTINUE                                                         
-           ELSE                                                                 
-               IF  APPL-EOF                                                     
-                   MOVE 'Y' TO END-OF-FILE                                      
-               ELSE                                                             
-                   DISPLAY 'ERROR READING DALYTRAN FILE'                        
-                   MOVE DALYTRAN-STATUS TO IO-STATUS                            
-                   PERFORM 9910-DISPLAY-IO-STATUS                               
-                   PERFORM 9999-ABEND-PROGRAM                                   
-               END-IF                                                           
-           END-IF                                                               
-           EXIT.                                                                
-       1500-VALIDATE-TRAN.                                                      
-           PERFORM 1500-A-LOOKUP-XREF.                                          
-           IF WS-VALIDATION-FAIL-REASON = 0                                     
-              PERFORM 1500-B-LOOKUP-ACCT                                        
-           ELSE                                                                 
-              CONTINUE                                                          
-           END-IF                                                               
-      * ADD MORE VALIDATIONS HERE                                               
-           EXIT.                                                                
-                                                                                
-       1500-A-LOOKUP-XREF.                                                      
-      *    DISPLAY 'CARD NUMBER: ' DALYTRAN-CARD-NUM                            
-           MOVE DALYTRAN-CARD-NUM TO FD-XREF-CARD-NUM                           
-           READ XREF-FILE INTO CARD-XREF-RECORD                                 
-              INVALID KEY                                                       
-                MOVE 100 TO WS-VALIDATION-FAIL-REASON                           
-                MOVE 'INVALID CARD NUMBER FOUND'                                
-                  TO WS-VALIDATION-FAIL-REASON-DESC                             
-              NOT INVALID KEY                                                   
-      *           DISPLAY 'ACCOUNT RECORD FOUND'                                
-                  CONTINUE                                                      
-           END-READ                                                             
-           EXIT.                                                                
-       1500-B-LOOKUP-ACCT.                                                      
-           MOVE XREF-ACCT-ID TO FD-ACCT-ID                                      
-           READ ACCOUNT-FILE INTO ACCOUNT-RECORD                                
-              INVALID KEY                                                       
-                MOVE 101 TO WS-VALIDATION-FAIL-REASON                           
-                MOVE 'ACCOUNT RECORD NOT FOUND'                                 
-                  TO WS-VALIDATION-FAIL-REASON-DESC                             
-              NOT INVALID KEY                                                   
-      *         DISPLAY 'ACCT-CREDIT-LIMIT:' ACCT-CREDIT-LIMIT                  
-      *         DISPLAY 'TRAN-AMT         :' DALYTRAN-AMT                       
-                COMPUTE WS-TEMP-BAL = ACCT-CURR-CYC-CREDIT                      
-                                    - ACCT-CURR-CYC-DEBIT                       
-                                    + DALYTRAN-AMT                              
-                                                                                
-                IF ACCT-CREDIT-LIMIT >= WS-TEMP-BAL                             
-                  CONTINUE                                                      
-                ELSE                                                            
-                  MOVE 102 TO WS-VALIDATION-FAIL-REASON                         
-                  MOVE 'OVERLIMIT TRANSACTION'                                  
-                    TO WS-VALIDATION-FAIL-REASON-DESC                           
-                END-IF                                                          
-                IF ACCT-EXPIRAION-DATE >= DALYTRAN-ORIG-TS (1:10)               
-                  CONTINUE                                                      
-                ELSE                                                            
-                  MOVE 103 TO WS-VALIDATION-FAIL-REASON                         
-                  MOVE 'TRANSACTION RECEIVED AFTER ACCT EXPIRATION'             
-                    TO WS-VALIDATION-FAIL-REASON-DESC                           
-                END-IF                                                          
-           END-READ                                                             
-           EXIT.                                                                
-      *---------------------------------------------------------------*         
-       2000-POST-TRANSACTION.                                                   
-           MOVE  DALYTRAN-ID            TO    TRAN-ID                           
-           MOVE  DALYTRAN-TYPE-CD       TO    TRAN-TYPE-CD                      
-           MOVE  DALYTRAN-CAT-CD        TO    TRAN-CAT-CD                       
-           MOVE  DALYTRAN-SOURCE        TO    TRAN-SOURCE                       
-           MOVE  DALYTRAN-DESC          TO    TRAN-DESC                         
-           MOVE  DALYTRAN-AMT           TO    TRAN-AMT                          
-           MOVE  DALYTRAN-MERCHANT-ID   TO    TRAN-MERCHANT-ID                  
-           MOVE  DALYTRAN-MERCHANT-NAME TO    TRAN-MERCHANT-NAME                
-           MOVE  DALYTRAN-MERCHANT-CITY TO    TRAN-MERCHANT-CITY                
-           MOVE  DALYTRAN-MERCHANT-ZIP  TO    TRAN-MERCHANT-ZIP                 
-           MOVE  DALYTRAN-CARD-NUM      TO    TRAN-CARD-NUM                     
-           MOVE  DALYTRAN-ORIG-TS       TO    TRAN-ORIG-TS                      
-           PERFORM Z-GET-DB2-FORMAT-TIMESTAMP                                   
-           MOVE  DB2-FORMAT-TS          TO    TRAN-PROC-TS                      
-                                                                                
-           PERFORM 2700-UPDATE-TCATBAL                                          
-           PERFORM 2800-UPDATE-ACCOUNT-REC                                      
-           PERFORM 2900-WRITE-TRANSACTION-FILE                                  
-                                                                                
-           EXIT.                                                                
-                                                                                
-       2500-WRITE-REJECT-REC.                                                   
-           MOVE DALYTRAN-RECORD TO REJECT-TRAN-DATA                             
-           MOVE WS-VALIDATION-TRAILER TO VALIDATION-TRAILER                     
-      *     DISPLAY '***' REJECT-RECORD                                         
-           MOVE 8 TO APPL-RESULT                                                
-           WRITE FD-REJS-RECORD FROM REJECT-RECORD                              
-           IF DALYREJS-STATUS = '00'                                            
-               MOVE 0 TO  APPL-RESULT                                           
-           ELSE                                                                 
-               MOVE 12 TO APPL-RESULT                                           
-           END-IF                                                               
-           IF  APPL-AOK                                                         
-               CONTINUE                                                         
-           ELSE                                                                 
-               DISPLAY 'ERROR WRITING TO REJECTS FILE'                          
-               MOVE DALYREJS-STATUS  TO IO-STATUS                               
-               PERFORM 9910-DISPLAY-IO-STATUS                                   
-               PERFORM 9999-ABEND-PROGRAM                                       
-           END-IF                                                               
-           EXIT.                                                                
-      *---------------------------------------------------------------*         
-       2700-UPDATE-TCATBAL.                                                     
-      * Update the balances in transaction balance file.                        
-           MOVE XREF-ACCT-ID TO FD-TRANCAT-ACCT-ID                              
-           MOVE DALYTRAN-TYPE-CD TO FD-TRANCAT-TYPE-CD                          
-           MOVE DALYTRAN-CAT-CD TO FD-TRANCAT-CD                                
-                                                                                
-           MOVE 'N' TO WS-CREATE-TRANCAT-REC                                    
-           READ TCATBAL-FILE INTO TRAN-CAT-BAL-RECORD                           
-              INVALID KEY                                                       
-                DISPLAY 'TCATBAL record not found for key : '                   
-                   FD-TRAN-CAT-KEY '.. Creating.'                               
-                MOVE 'Y' TO WS-CREATE-TRANCAT-REC                               
-           END-READ.                                                            
-                                                                                
-           IF  TCATBALF-STATUS = '00'  OR '23'                                  
-               MOVE 0 TO APPL-RESULT                                            
-           ELSE                                                                 
-               MOVE 12 TO APPL-RESULT                                           
-           END-IF                                                               
-           IF  APPL-AOK                                                         
-               CONTINUE                                                         
-           ELSE                                                                 
-               DISPLAY 'ERROR READING TRANSACTION BALANCE FILE'                 
-               MOVE TCATBALF-STATUS TO IO-STATUS                                
-               PERFORM 9910-DISPLAY-IO-STATUS                                   
-               PERFORM 9999-ABEND-PROGRAM                                       
-           END-IF.                                                              
-                                                                                
-           IF WS-CREATE-TRANCAT-REC = 'Y'                                       
-              PERFORM 2700-A-CREATE-TCATBAL-REC                                 
-           ELSE                                                                 
-              PERFORM 2700-B-UPDATE-TCATBAL-REC                                 
-           END-IF                                                               
-                                                                                
-           EXIT.                                                                
-      *---------------------------------------------------------------*         
-       2700-A-CREATE-TCATBAL-REC.                                               
-           INITIALIZE TRAN-CAT-BAL-RECORD                                       
-           MOVE XREF-ACCT-ID TO TRANCAT-ACCT-ID                                 
-           MOVE DALYTRAN-TYPE-CD TO TRANCAT-TYPE-CD                             
-           MOVE DALYTRAN-CAT-CD TO TRANCAT-CD                                   
-           ADD DALYTRAN-AMT TO TRAN-CAT-BAL                                     
-                                                                                
-           WRITE FD-TRAN-CAT-BAL-RECORD FROM TRAN-CAT-BAL-RECORD                
-                                                                                
-           IF  TCATBALF-STATUS = '00'                                           
-               MOVE 0 TO APPL-RESULT                                            
-           ELSE                                                                 
-               MOVE 12 TO APPL-RESULT                                           
-           END-IF                                                               
-           IF  APPL-AOK                                                         
-               CONTINUE                                                         
-           ELSE                                                                 
-               DISPLAY 'ERROR WRITING TRANSACTION BALANCE FILE'                 
-               MOVE TCATBALF-STATUS TO IO-STATUS                                
-               PERFORM 9910-DISPLAY-IO-STATUS                                   
-               PERFORM 9999-ABEND-PROGRAM                                       
-           END-IF.                                                              
-      *---------------------------------------------------------------*         
-       2700-B-UPDATE-TCATBAL-REC.                                               
-           ADD DALYTRAN-AMT TO TRAN-CAT-BAL                                     
-           REWRITE FD-TRAN-CAT-BAL-RECORD FROM TRAN-CAT-BAL-RECORD              
-                                                                                
-           IF  TCATBALF-STATUS = '00'                                           
-               MOVE 0 TO APPL-RESULT                                            
-           ELSE                                                                 
-               MOVE 12 TO APPL-RESULT                                           
-           END-IF                                                               
-           IF  APPL-AOK                                                         
-               CONTINUE                                                         
-           ELSE                                                                 
-               DISPLAY 'ERROR REWRITING TRANSACTION BALANCE FILE'               
-               MOVE TCATBALF-STATUS TO IO-STATUS                                
-               PERFORM 9910-DISPLAY-IO-STATUS                                   
-               PERFORM 9999-ABEND-PROGRAM                                       
-           END-IF.                                                              
-                                                                                
-      *---------------------------------------------------------------*         
-       2800-UPDATE-ACCOUNT-REC.                                                 
-      * Update the balances in account record to reflect posted trans.          
-           ADD DALYTRAN-AMT  TO ACCT-CURR-BAL                                   
-           IF DALYTRAN-AMT >= 0                                                 
-              ADD DALYTRAN-AMT TO ACCT-CURR-CYC-CREDIT                          
-           ELSE                                                                 
-              ADD DALYTRAN-AMT TO ACCT-CURR-CYC-DEBIT                           
-           END-IF                                                               
-                                                                                
-           REWRITE FD-ACCTFILE-REC FROM  ACCOUNT-RECORD                         
-              INVALID KEY                                                       
-                MOVE 109 TO WS-VALIDATION-FAIL-REASON                           
-                MOVE 'ACCOUNT RECORD NOT FOUND'                                 
-                  TO WS-VALIDATION-FAIL-REASON-DESC                             
-           END-REWRITE.                                                         
-           EXIT.                                                                
-      *---------------------------------------------------------------*         
-       2900-WRITE-TRANSACTION-FILE.                                             
-           MOVE 8 TO  APPL-RESULT.                                              
-           WRITE FD-TRANFILE-REC FROM TRAN-RECORD                               
-                                                                                
-           IF  TRANFILE-STATUS = '00'                                           
-               MOVE 0 TO  APPL-RESULT                                           
-           ELSE                                                                 
-               MOVE 12 TO APPL-RESULT                                           
-           END-IF                                                               
-           IF  APPL-AOK                                                         
-               CONTINUE                                                         
-           ELSE                                                                 
-               DISPLAY 'ERROR WRITING TO TRANSACTION FILE'                      
-               MOVE TRANFILE-STATUS  TO IO-STATUS                               
-               PERFORM 9910-DISPLAY-IO-STATUS                                   
-               PERFORM 9999-ABEND-PROGRAM                                       
-           END-IF                                                               
-           EXIT.                                                                
-                                                                                
-      *---------------------------------------------------------------*         
-       9000-DALYTRAN-CLOSE.                                                     
-           MOVE 8 TO  APPL-RESULT.                                              
-           CLOSE DALYTRAN-FILE                                                  
-           IF  DALYTRAN-STATUS = '00'                                           
-               MOVE 0 TO APPL-RESULT                                            
-           ELSE                                                                 
-               MOVE 12 TO APPL-RESULT                                           
-           END-IF                                                               
-           IF  APPL-AOK                                                         
-               CONTINUE                                                         
-           ELSE                                                                 
-               DISPLAY 'ERROR CLOSING DALYTRAN FILE'                            
-               MOVE DALYTRAN-STATUS TO IO-STATUS                                
-               PERFORM 9910-DISPLAY-IO-STATUS                                   
-               PERFORM 9999-ABEND-PROGRAM                                       
-           END-IF                                                               
-           EXIT.                                                                
-      *---------------------------------------------------------------*         
-       9100-TRANFILE-CLOSE.                                                     
-           MOVE 8 TO  APPL-RESULT.                                              
-           CLOSE TRANSACT-FILE                                                  
-           IF  TRANFILE-STATUS = '00'                                           
-               MOVE 0 TO  APPL-RESULT                                           
-           ELSE                                                                 
-               MOVE 12 TO APPL-RESULT                                           
-           END-IF                                                               
-           IF  APPL-AOK                                                         
-               CONTINUE                                                         
-           ELSE                                                                 
-               DISPLAY 'ERROR CLOSING TRANSACTION FILE'                         
-               MOVE TRANFILE-STATUS  TO IO-STATUS                               
-               PERFORM 9910-DISPLAY-IO-STATUS                                   
-               PERFORM 9999-ABEND-PROGRAM                                       
-           END-IF                                                               
-           EXIT.                                                                
-                                                                                
-      *---------------------------------------------------------------*         
-       9200-XREFFILE-CLOSE.                                                     
-           MOVE 8 TO APPL-RESULT.                                               
-           CLOSE XREF-FILE                                                      
-           IF  XREFFILE-STATUS = '00'                                           
-               MOVE 0 TO APPL-RESULT                                            
-           ELSE                                                                 
-               MOVE 12 TO APPL-RESULT                                           
-           END-IF                                                               
-           IF  APPL-AOK                                                         
-               CONTINUE                                                         
-           ELSE                                                                 
-               DISPLAY 'ERROR CLOSING CROSS REF FILE'                           
-               MOVE XREFFILE-STATUS TO IO-STATUS                                
-               PERFORM 9910-DISPLAY-IO-STATUS                                   
-               PERFORM 9999-ABEND-PROGRAM                                       
-           END-IF                                                               
-           EXIT.                                                                
-      *---------------------------------------------------------------*         
-       9300-DALYREJS-CLOSE.                                                     
-           MOVE 8 TO APPL-RESULT.                                               
-           CLOSE DALYREJS-FILE                                                  
-           IF  DALYREJS-STATUS = '00'                                           
-               MOVE 0 TO APPL-RESULT                                            
-           ELSE                                                                 
-               MOVE 12 TO APPL-RESULT                                           
-           END-IF                                                               
-           IF  APPL-AOK                                                         
-               CONTINUE                                                         
-           ELSE                                                                 
-               DISPLAY 'ERROR CLOSING DAILY REJECTS FILE'                       
-               MOVE XREFFILE-STATUS TO IO-STATUS                                
-               PERFORM 9910-DISPLAY-IO-STATUS                                   
-               PERFORM 9999-ABEND-PROGRAM                                       
-           END-IF                                                               
-           EXIT.                                                                
-      *---------------------------------------------------------------*         
-       9400-ACCTFILE-CLOSE.                                                     
-           MOVE 8 TO APPL-RESULT.                                               
-           CLOSE ACCOUNT-FILE                                                   
-           IF  ACCTFILE-STATUS  = '00'                                          
-               MOVE 0 TO APPL-RESULT                                            
-           ELSE                                                                 
-               MOVE 12 TO APPL-RESULT                                           
-           END-IF                                                               
-           IF  APPL-AOK                                                         
-               CONTINUE                                                         
-           ELSE                                                                 
-               DISPLAY 'ERROR CLOSING ACCOUNT FILE'                             
-               MOVE ACCTFILE-STATUS  TO IO-STATUS                               
-               PERFORM 9910-DISPLAY-IO-STATUS                                   
-               PERFORM 9999-ABEND-PROGRAM                                       
-           END-IF                                                               
-           EXIT.                                                                
-                                                                                
-      *---------------------------------------------------------------*         
-       9500-TCATBALF-CLOSE.                                                     
-           MOVE 8 TO APPL-RESULT.                                               
-           CLOSE TCATBAL-FILE                                                   
-           IF  TCATBALF-STATUS  = '00'                                          
-               MOVE 0 TO APPL-RESULT                                            
-           ELSE                                                                 
-               MOVE 12 TO APPL-RESULT                                           
-           END-IF                                                               
-           IF  APPL-AOK                                                         
-               CONTINUE                                                         
-           ELSE                                                                 
-               DISPLAY 'ERROR CLOSING TRANSACTION BALANCE FILE'                 
-               MOVE TCATBALF-STATUS  TO IO-STATUS                               
-               PERFORM 9910-DISPLAY-IO-STATUS                                   
-               PERFORM 9999-ABEND-PROGRAM                                       
-           END-IF                                                               
-           EXIT.                                                                
-                                                                                
-       Z-GET-DB2-FORMAT-TIMESTAMP.                                              
-           MOVE FUNCTION CURRENT-DATE TO COBOL-TS                               
-           MOVE COB-YYYY TO DB2-YYYY                                            
-           MOVE COB-MM   TO DB2-MM                                              
-           MOVE COB-DD   TO DB2-DD                                              
-           MOVE COB-HH   TO DB2-HH                                              
-           MOVE COB-MIN  TO DB2-MIN                                             
-           MOVE COB-SS   TO DB2-SS                                              
-           MOVE COB-MIL  TO DB2-MIL                                             
-           MOVE '0000'   TO DB2-REST                                            
-           MOVE '-' TO DB2-STREEP-1 DB2-STREEP-2 DB2-STREEP-3                   
-           MOVE '.' TO DB2-DOT-1 DB2-DOT-2 DB2-DOT-3                            
-      *    DISPLAY 'DB2-TIMESTAMP = ' DB2-FORMAT-TS                             
-           EXIT.                                                                
-                                                                                
-       9999-ABEND-PROGRAM.                                                      
-           DISPLAY 'ABENDING PROGRAM'                                           
-           MOVE 0 TO TIMING                                                     
-           MOVE 999 TO ABCODE                                                   
-           CALL 'CEE3ABD' USING ABCODE, TIMING.                                 
-                                                                                
-      *****************************************************************         
-       9910-DISPLAY-IO-STATUS.                                                  
-           IF  IO-STATUS NOT NUMERIC                                            
-           OR  IO-STAT1 = '9'                                                   
-               MOVE IO-STAT1 TO IO-STATUS-04(1:1)                               
-               MOVE 0        TO TWO-BYTES-BINARY                                
-               MOVE IO-STAT2 TO TWO-BYTES-RIGHT                                 
-               MOVE TWO-BYTES-BINARY TO IO-STATUS-0403                          
-               DISPLAY 'FILE STATUS IS: NNNN' IO-STATUS-04                      
-           ELSE                                                                 
-               MOVE '0000' TO IO-STATUS-04                                      
-               MOVE IO-STATUS TO IO-STATUS-04(3:2)                              
-               DISPLAY 'FILE STATUS IS: NNNN' IO-STATUS-04                      
-           END-IF                                                               
-           EXIT.                                                                
-                                                                                
-      *
-      * Ver: CardDemo_v2.0-25-gdb72e6b-235 Date: 2025-04-29 11:01:29 CDT
-      *
+>>SOURCE FREE
+IDENTIFICATION DIVISION.
+PROGRAM-ID. CBTRN02C.
+AUTHOR. AWS.
+
+ENVIRONMENT DIVISION.
+INPUT-OUTPUT SECTION.
+FILE-CONTROL.
+    SELECT PENDING-FILE ASSIGN TO DYNAMIC WS-PENDING-PATH
+        ORGANIZATION IS LINE SEQUENTIAL
+        FILE STATUS IS WS-PENDING-STATUS.
+    SELECT MASTER-TRANSACTION-FILE ASSIGN TO DYNAMIC WS-TRANSACTION-PATH
+        ORGANIZATION IS LINE SEQUENTIAL
+        FILE STATUS IS WS-TRANSACTION-STATUS.
+    SELECT XREF-FILE ASSIGN TO DYNAMIC WS-XREF-PATH
+        ORGANIZATION IS LINE SEQUENTIAL
+        FILE STATUS IS WS-XREF-STATUS.
+    SELECT ACCOUNT-FILE ASSIGN TO DYNAMIC WS-ACCOUNT-PATH
+        ORGANIZATION IS LINE SEQUENTIAL
+        FILE STATUS IS WS-ACCOUNT-STATUS.
+    SELECT TCATBAL-FILE ASSIGN TO DYNAMIC WS-TCATBAL-PATH
+        ORGANIZATION IS LINE SEQUENTIAL
+        FILE STATUS IS WS-TCATBAL-STATUS.
+    SELECT REJECT-FILE ASSIGN TO DYNAMIC WS-REJECT-PATH
+        ORGANIZATION IS LINE SEQUENTIAL
+        FILE STATUS IS WS-REJECT-STATUS.
+
+DATA DIVISION.
+FILE SECTION.
+FD PENDING-FILE.
+01 PENDING-RAW-RECORD                PIC X(350).
+
+FD MASTER-TRANSACTION-FILE.
+01 TRANSACTION-RAW-RECORD            PIC X(350).
+
+FD XREF-FILE.
+01 XREF-RAW-RECORD                   PIC X(50).
+
+FD ACCOUNT-FILE.
+01 ACCOUNT-RAW-RECORD                PIC X(300).
+
+FD TCATBAL-FILE.
+01 TCATBAL-RAW-RECORD                PIC X(50).
+
+FD REJECT-FILE.
+01 REJECT-RAW-RECORD                 PIC X(430).
+
+WORKING-STORAGE SECTION.
+01 WS-PATHS.
+   05 WS-PENDING-PATH                PIC X(256) VALUE SPACES.
+   05 WS-TRANSACTION-PATH            PIC X(256) VALUE SPACES.
+   05 WS-XREF-PATH                   PIC X(256) VALUE SPACES.
+   05 WS-ACCOUNT-PATH                PIC X(256) VALUE SPACES.
+   05 WS-TCATBAL-PATH                PIC X(256) VALUE SPACES.
+   05 WS-REJECT-PATH                 PIC X(256) VALUE SPACES.
+   05 WS-PENDING-STATUS              PIC X(02) VALUE SPACES.
+   05 WS-TRANSACTION-STATUS          PIC X(02) VALUE SPACES.
+   05 WS-XREF-STATUS                 PIC X(02) VALUE SPACES.
+   05 WS-ACCOUNT-STATUS              PIC X(02) VALUE SPACES.
+   05 WS-TCATBAL-STATUS              PIC X(02) VALUE SPACES.
+   05 WS-REJECT-STATUS               PIC X(02) VALUE SPACES.
+
+01 WS-FLAGS.
+   05 WS-END-OF-FILE                 PIC X VALUE "N".
+      88 END-OF-FILE                             VALUE "Y".
+      88 MORE-RECORDS                            VALUE "N".
+   05 WS-XREF-FOUND                  PIC X VALUE "N".
+      88 XREF-FOUND                              VALUE "Y".
+      88 XREF-NOT-FOUND                          VALUE "N".
+   05 WS-ACCOUNT-FOUND               PIC X VALUE "N".
+      88 ACCOUNT-FOUND                           VALUE "Y".
+      88 ACCOUNT-NOT-FOUND                       VALUE "N".
+   05 WS-TCATBAL-FOUND               PIC X VALUE "N".
+      88 TCATBAL-FOUND                           VALUE "Y".
+      88 TCATBAL-NOT-FOUND                       VALUE "N".
+   05 WS-PENDING-AVAILABLE           PIC X VALUE "Y".
+      88 PENDING-AVAILABLE                       VALUE "Y".
+      88 PENDING-MISSING                         VALUE "N".
+
+01 WS-COUNTERS.
+   05 WS-XREF-COUNT                  PIC 9(04) VALUE 0.
+   05 WS-ACCOUNT-COUNT               PIC 9(04) VALUE 0.
+   05 WS-TCATBAL-COUNT               PIC 9(04) VALUE 0.
+   05 WS-PROCESSED-COUNT             PIC 9(09) VALUE 0.
+   05 WS-POSTED-COUNT                PIC 9(09) VALUE 0.
+   05 WS-REJECT-COUNT                PIC 9(09) VALUE 0.
+   05 WS-IDX                         PIC 9(04) VALUE 0.
+
+01 WS-XREF-TABLE.
+   05 WS-XREF-ENTRY OCCURS 500 TIMES.
+      10 WS-XREF-CARD-NUM            PIC X(16).
+      10 WS-XREF-ACCT-ID             PIC X(11).
+
+01 WS-ACCOUNT-TABLE.
+   05 WS-ACCOUNT-ENTRY OCCURS 500 TIMES.
+      10 WS-ACCOUNT-LINE             PIC X(300).
+
+01 WS-TCATBAL-TABLE.
+   05 WS-TCATBAL-ENTRY OCCURS 2000 TIMES.
+      10 WS-TCATBAL-LINE             PIC X(50).
+
+01 WS-CURRENT.
+   05 WS-CURRENT-ACCOUNT-ID          PIC X(11) VALUE SPACES.
+   05 WS-CURRENT-TYPE-CD             PIC X(02) VALUE SPACES.
+   05 WS-CURRENT-CAT-CD              PIC X(04) VALUE SPACES.
+   05 WS-CURRENT-ORIG-DATE           PIC X(10) VALUE SPACES.
+   05 WS-CURRENT-ACCOUNT-IDX         PIC 9(04) VALUE 0.
+   05 WS-CURRENT-TCATBAL-IDX         PIC 9(04) VALUE 0.
+
+01 WS-VALIDATION.
+   05 WS-VALIDATION-CODE             PIC 9(04) VALUE 0.
+   05 WS-VALIDATION-DESC             PIC X(76) VALUE SPACES.
+
+01 WS-AMOUNTS.
+   05 WS-AMOUNT-RAW-11-INPUT         PIC X(11) VALUE SPACES.
+   05 WS-AMOUNT-RAW-12-INPUT         PIC X(12) VALUE SPACES.
+   05 WS-PENDING-AMOUNT-RAW          PIC X(11) VALUE SPACES.
+   05 WS-PENDING-AMOUNT              PIC S9(9)V99 VALUE 0.
+   05 WS-ACCOUNT-BALANCE-RAW         PIC X(12) VALUE SPACES.
+   05 WS-ACCOUNT-CREDIT-LIMIT-RAW    PIC X(12) VALUE SPACES.
+   05 WS-ACCOUNT-CYC-CREDIT-RAW      PIC X(12) VALUE SPACES.
+   05 WS-ACCOUNT-CYC-DEBIT-RAW       PIC X(12) VALUE SPACES.
+   05 WS-TCATBAL-AMOUNT-RAW          PIC X(11) VALUE SPACES.
+   05 WS-AMOUNT-LAST-DIGIT           PIC X(01) VALUE SPACE.
+   05 WS-AMOUNT-SIGN                 PIC X(01) VALUE "+".
+   05 WS-AMOUNT-NUMERIC-11           PIC 9(11) VALUE 0.
+   05 WS-AMOUNT-NUMERIC-12           PIC 9(12) VALUE 0.
+   05 WS-ACCOUNT-BALANCE             PIC S9(10)V99 VALUE 0.
+   05 WS-ACCOUNT-CREDIT-LIMIT        PIC S9(10)V99 VALUE 0.
+   05 WS-ACCOUNT-CYC-CREDIT          PIC S9(10)V99 VALUE 0.
+   05 WS-ACCOUNT-CYC-DEBIT           PIC S9(10)V99 VALUE 0.
+   05 WS-TCATBAL-AMOUNT              PIC S9(9)V99 VALUE 0.
+   05 WS-TEMP-BALANCE                PIC S9(10)V99 VALUE 0.
+   05 WS-AMOUNT-ABS-11               PIC 9(11) VALUE 0.
+   05 WS-AMOUNT-ABS-11-TEXT          PIC 9(11) VALUE 0.
+   05 WS-AMOUNT-RAW-11 REDEFINES WS-AMOUNT-ABS-11-TEXT PIC X(11).
+   05 WS-AMOUNT-ABS-12               PIC 9(12) VALUE 0.
+   05 WS-AMOUNT-ABS-12-TEXT          PIC 9(12) VALUE 0.
+   05 WS-AMOUNT-RAW-12 REDEFINES WS-AMOUNT-ABS-12-TEXT PIC X(12).
+
+01 WS-TIMESTAMP-WORK.
+   05 WS-TIMESTAMP-DATE              PIC X(10) VALUE SPACES.
+   05 WS-TIMESTAMP-TIME              PIC X(08) VALUE SPACES.
+   05 WS-TIMESTAMP                   PIC X(26) VALUE SPACES.
+
+01 WS-REJECT-WORK.
+   05 WS-REJECT-RECORD               PIC X(430) VALUE SPACES.
+
+01 WS-WORK-RECORDS.
+   05 WS-ACCOUNT-WORK-LINE           PIC X(300) VALUE SPACES.
+   05 WS-TCATBAL-WORK-LINE           PIC X(50) VALUE SPACES.
+
+PROCEDURE DIVISION.
+MAIN-PARA.
+    PERFORM INITIALIZE-PATHS
+    IF FUNCTION TRIM(WS-PENDING-PATH) = FUNCTION TRIM(WS-TRANSACTION-PATH)
+        DISPLAY "Pending input path and posted transaction path must differ."
+        MOVE 12 TO RETURN-CODE
+        GOBACK
+    END-IF
+    PERFORM LOAD-XREF-TABLE
+    PERFORM LOAD-ACCOUNT-TABLE
+    PERFORM LOAD-TCATBAL-TABLE
+    PERFORM PROCESS-PENDING-QUEUE
+    IF PENDING-MISSING
+        DISPLAY "Pending transaction file not found. Nothing to post."
+        GOBACK
+    END-IF
+    PERFORM SAVE-ACCOUNT-TABLE
+    PERFORM SAVE-TCATBAL-TABLE
+    PERFORM CLEAR-PENDING-QUEUE
+    DISPLAY "Transactions processed : " WS-PROCESSED-COUNT
+    DISPLAY "Transactions posted    : " WS-POSTED-COUNT
+    DISPLAY "Transactions rejected  : " WS-REJECT-COUNT
+    IF WS-REJECT-COUNT > 0
+        MOVE 4 TO RETURN-CODE
+    END-IF
+    GOBACK.
+
+INITIALIZE-PATHS.
+    ACCEPT WS-PENDING-PATH FROM ENVIRONMENT "CARDDEMO_PENDING_TRAN_PATH"
+    IF WS-PENDING-PATH = SPACES
+        MOVE "app/data/ASCII/dailytran_pending.txt" TO WS-PENDING-PATH
+    END-IF
+    ACCEPT WS-TRANSACTION-PATH FROM ENVIRONMENT "CARDDEMO_TRAN_PATH"
+    IF WS-TRANSACTION-PATH = SPACES
+        MOVE "app/data/ASCII/dailytran.txt" TO WS-TRANSACTION-PATH
+    END-IF
+    ACCEPT WS-XREF-PATH FROM ENVIRONMENT "CARDDEMO_XREF_PATH"
+    IF WS-XREF-PATH = SPACES
+        MOVE "app/data/ASCII/cardxref.txt" TO WS-XREF-PATH
+    END-IF
+    ACCEPT WS-ACCOUNT-PATH FROM ENVIRONMENT "CARDDEMO_ACCT_PATH"
+    IF WS-ACCOUNT-PATH = SPACES
+        MOVE "app/data/ASCII/acctdata.txt" TO WS-ACCOUNT-PATH
+    END-IF
+    ACCEPT WS-TCATBAL-PATH FROM ENVIRONMENT "CARDDEMO_TCATBAL_PATH"
+    IF WS-TCATBAL-PATH = SPACES
+        MOVE "app/data/ASCII/tcatbal.txt" TO WS-TCATBAL-PATH
+    END-IF
+    ACCEPT WS-REJECT-PATH FROM ENVIRONMENT "CARDDEMO_REJECT_PATH"
+    IF WS-REJECT-PATH = SPACES
+        MOVE "app/data/ASCII/dalyrejs.txt" TO WS-REJECT-PATH
+    END-IF.
+
+LOAD-XREF-TABLE.
+    MOVE 0 TO WS-XREF-COUNT
+    SET MORE-RECORDS TO TRUE
+    OPEN INPUT XREF-FILE
+    IF WS-XREF-STATUS NOT = "00"
+        DISPLAY "Unable to open xref file. Status: " WS-XREF-STATUS
+        STOP RUN
+    END-IF
+    PERFORM UNTIL END-OF-FILE
+        READ XREF-FILE
+            AT END
+                SET END-OF-FILE TO TRUE
+            NOT AT END
+                ADD 1 TO WS-XREF-COUNT
+                MOVE XREF-RAW-RECORD(1:16) TO WS-XREF-CARD-NUM(WS-XREF-COUNT)
+                MOVE XREF-RAW-RECORD(26:11) TO WS-XREF-ACCT-ID(WS-XREF-COUNT)
+        END-READ
+    END-PERFORM
+    CLOSE XREF-FILE.
+
+LOAD-ACCOUNT-TABLE.
+    MOVE 0 TO WS-ACCOUNT-COUNT
+    SET MORE-RECORDS TO TRUE
+    OPEN INPUT ACCOUNT-FILE
+    IF WS-ACCOUNT-STATUS NOT = "00"
+        DISPLAY "Unable to open account file. Status: " WS-ACCOUNT-STATUS
+        STOP RUN
+    END-IF
+    PERFORM UNTIL END-OF-FILE
+        READ ACCOUNT-FILE
+            AT END
+                SET END-OF-FILE TO TRUE
+            NOT AT END
+                ADD 1 TO WS-ACCOUNT-COUNT
+                MOVE ACCOUNT-RAW-RECORD TO WS-ACCOUNT-LINE(WS-ACCOUNT-COUNT)
+        END-READ
+    END-PERFORM
+    CLOSE ACCOUNT-FILE.
+
+LOAD-TCATBAL-TABLE.
+    MOVE 0 TO WS-TCATBAL-COUNT
+    SET MORE-RECORDS TO TRUE
+    OPEN INPUT TCATBAL-FILE
+    IF WS-TCATBAL-STATUS = "35"
+        EXIT PARAGRAPH
+    END-IF
+    IF WS-TCATBAL-STATUS NOT = "00"
+        DISPLAY "Unable to open tcatbal file. Status: " WS-TCATBAL-STATUS
+        STOP RUN
+    END-IF
+    PERFORM UNTIL END-OF-FILE
+        READ TCATBAL-FILE
+            AT END
+                SET END-OF-FILE TO TRUE
+            NOT AT END
+                ADD 1 TO WS-TCATBAL-COUNT
+                MOVE TCATBAL-RAW-RECORD TO WS-TCATBAL-LINE(WS-TCATBAL-COUNT)
+        END-READ
+    END-PERFORM
+    CLOSE TCATBAL-FILE.
+
+PROCESS-PENDING-QUEUE.
+    SET MORE-RECORDS TO TRUE
+    SET PENDING-AVAILABLE TO TRUE
+    OPEN INPUT PENDING-FILE
+    EVALUATE WS-PENDING-STATUS
+        WHEN "00"
+            CONTINUE
+        WHEN "35"
+            SET PENDING-MISSING TO TRUE
+            EXIT PARAGRAPH
+        WHEN OTHER
+            DISPLAY "Unable to open pending transaction file. Status: "
+                WS-PENDING-STATUS
+            STOP RUN
+    END-EVALUATE
+
+    OPEN OUTPUT REJECT-FILE
+    IF WS-REJECT-STATUS NOT = "00"
+        DISPLAY "Unable to open reject file. Status: " WS-REJECT-STATUS
+        STOP RUN
+    END-IF
+
+    PERFORM UNTIL END-OF-FILE
+        READ PENDING-FILE
+            AT END
+                SET END-OF-FILE TO TRUE
+            NOT AT END
+                ADD 1 TO WS-PROCESSED-COUNT
+                PERFORM RESET-TRANSACTION-CONTEXT
+                PERFORM VALIDATE-TRANSACTION
+                IF WS-VALIDATION-CODE = 0
+                    PERFORM POST-TRANSACTION
+                    ADD 1 TO WS-POSTED-COUNT
+                ELSE
+                    PERFORM WRITE-REJECT-RECORD
+                    ADD 1 TO WS-REJECT-COUNT
+                END-IF
+        END-READ
+    END-PERFORM
+
+    CLOSE PENDING-FILE
+    CLOSE REJECT-FILE.
+
+RESET-TRANSACTION-CONTEXT.
+    MOVE 0 TO WS-VALIDATION-CODE
+    MOVE SPACES TO WS-VALIDATION-DESC
+    MOVE SPACES TO WS-CURRENT-ACCOUNT-ID
+                    WS-CURRENT-TYPE-CD
+                    WS-CURRENT-CAT-CD
+                    WS-CURRENT-ORIG-DATE
+    MOVE 0 TO WS-CURRENT-ACCOUNT-IDX WS-CURRENT-TCATBAL-IDX
+    MOVE PENDING-RAW-RECORD(17:2) TO WS-CURRENT-TYPE-CD
+    MOVE PENDING-RAW-RECORD(19:4) TO WS-CURRENT-CAT-CD
+    MOVE PENDING-RAW-RECORD(279:10) TO WS-CURRENT-ORIG-DATE.
+
+VALIDATE-TRANSACTION.
+    MOVE PENDING-RAW-RECORD(133:11) TO WS-PENDING-AMOUNT-RAW
+    MOVE WS-PENDING-AMOUNT-RAW TO WS-AMOUNT-RAW-11-INPUT
+    PERFORM DECODE-AMOUNT-11
+    MOVE WS-TCATBAL-AMOUNT TO WS-PENDING-AMOUNT
+    PERFORM LOOKUP-XREF
+    IF WS-VALIDATION-CODE = 0
+        PERFORM LOOKUP-ACCOUNT
+    END-IF
+    IF WS-VALIDATION-CODE = 0
+        PERFORM VALIDATE-ACCOUNT-LIMITS
+    END-IF.
+
+LOOKUP-XREF.
+    SET XREF-NOT-FOUND TO TRUE
+    PERFORM VARYING WS-IDX FROM 1 BY 1 UNTIL WS-IDX > WS-XREF-COUNT OR XREF-FOUND
+        IF WS-XREF-CARD-NUM(WS-IDX) = PENDING-RAW-RECORD(263:16)
+            MOVE WS-XREF-ACCT-ID(WS-IDX) TO WS-CURRENT-ACCOUNT-ID
+            SET XREF-FOUND TO TRUE
+        END-IF
+    END-PERFORM
+    IF XREF-NOT-FOUND
+        MOVE 100 TO WS-VALIDATION-CODE
+        MOVE "INVALID CARD NUMBER FOUND" TO WS-VALIDATION-DESC
+    END-IF.
+
+LOOKUP-ACCOUNT.
+    SET ACCOUNT-NOT-FOUND TO TRUE
+    PERFORM VARYING WS-IDX FROM 1 BY 1 UNTIL WS-IDX > WS-ACCOUNT-COUNT OR ACCOUNT-FOUND
+        IF WS-ACCOUNT-LINE(WS-IDX)(1:11) = WS-CURRENT-ACCOUNT-ID
+            MOVE WS-IDX TO WS-CURRENT-ACCOUNT-IDX
+            SET ACCOUNT-FOUND TO TRUE
+        END-IF
+    END-PERFORM
+    IF ACCOUNT-NOT-FOUND
+        MOVE 101 TO WS-VALIDATION-CODE
+        MOVE "ACCOUNT RECORD NOT FOUND" TO WS-VALIDATION-DESC
+    END-IF.
+
+VALIDATE-ACCOUNT-LIMITS.
+    MOVE WS-ACCOUNT-LINE(WS-CURRENT-ACCOUNT-IDX)(25:12)
+        TO WS-AMOUNT-RAW-12-INPUT
+    PERFORM DECODE-AMOUNT-12
+    MOVE WS-ACCOUNT-BALANCE TO WS-ACCOUNT-CREDIT-LIMIT
+
+    MOVE WS-ACCOUNT-LINE(WS-CURRENT-ACCOUNT-IDX)(79:12)
+        TO WS-AMOUNT-RAW-12-INPUT
+    PERFORM DECODE-AMOUNT-12
+    MOVE WS-ACCOUNT-BALANCE TO WS-ACCOUNT-CYC-CREDIT
+
+    MOVE WS-ACCOUNT-LINE(WS-CURRENT-ACCOUNT-IDX)(91:12)
+        TO WS-AMOUNT-RAW-12-INPUT
+    PERFORM DECODE-AMOUNT-12
+    MOVE WS-ACCOUNT-BALANCE TO WS-ACCOUNT-CYC-DEBIT
+
+    COMPUTE WS-TEMP-BALANCE =
+        WS-ACCOUNT-CYC-CREDIT - WS-ACCOUNT-CYC-DEBIT + WS-PENDING-AMOUNT
+    IF WS-ACCOUNT-CREDIT-LIMIT < WS-TEMP-BALANCE
+        MOVE 102 TO WS-VALIDATION-CODE
+        MOVE "OVERLIMIT TRANSACTION" TO WS-VALIDATION-DESC
+        EXIT PARAGRAPH
+    END-IF
+
+    IF WS-ACCOUNT-LINE(WS-CURRENT-ACCOUNT-IDX)(59:10) < WS-CURRENT-ORIG-DATE
+        MOVE 103 TO WS-VALIDATION-CODE
+        MOVE "TRANSACTION RECEIVED AFTER ACCT EXPIRATION"
+            TO WS-VALIDATION-DESC
+    END-IF.
+
+POST-TRANSACTION.
+    PERFORM BUILD-PROCESSED-TRANSACTION
+    PERFORM APPEND-TRANSACTION
+    PERFORM UPDATE-TCATBAL
+    PERFORM UPDATE-ACCOUNT.
+
+BUILD-PROCESSED-TRANSACTION.
+    STRING
+        FUNCTION CURRENT-DATE(1:4) "-" FUNCTION CURRENT-DATE(5:2) "-"
+        FUNCTION CURRENT-DATE(7:2)
+        DELIMITED BY SIZE INTO WS-TIMESTAMP-DATE
+    STRING
+        FUNCTION CURRENT-DATE(9:2) ":" FUNCTION CURRENT-DATE(11:2) ":"
+        FUNCTION CURRENT-DATE(13:2)
+        DELIMITED BY SIZE INTO WS-TIMESTAMP-TIME
+    STRING WS-TIMESTAMP-DATE " " WS-TIMESTAMP-TIME ".000000"
+        DELIMITED BY SIZE INTO WS-TIMESTAMP
+    MOVE PENDING-RAW-RECORD TO TRANSACTION-RAW-RECORD
+    MOVE WS-TIMESTAMP TO TRANSACTION-RAW-RECORD(305:26).
+
+APPEND-TRANSACTION.
+    OPEN EXTEND MASTER-TRANSACTION-FILE
+    IF WS-TRANSACTION-STATUS = "35"
+        OPEN OUTPUT MASTER-TRANSACTION-FILE
+        CLOSE MASTER-TRANSACTION-FILE
+        OPEN EXTEND MASTER-TRANSACTION-FILE
+    END-IF
+    IF WS-TRANSACTION-STATUS NOT = "00"
+        DISPLAY "Unable to append transaction file. Status: "
+            WS-TRANSACTION-STATUS
+        STOP RUN
+    END-IF
+    WRITE TRANSACTION-RAW-RECORD
+    CLOSE MASTER-TRANSACTION-FILE.
+
+UPDATE-TCATBAL.
+    SET TCATBAL-NOT-FOUND TO TRUE
+    PERFORM VARYING WS-IDX FROM 1 BY 1 UNTIL WS-IDX > WS-TCATBAL-COUNT OR TCATBAL-FOUND
+        IF WS-TCATBAL-LINE(WS-IDX)(1:11) = WS-CURRENT-ACCOUNT-ID
+            AND WS-TCATBAL-LINE(WS-IDX)(12:2) = WS-CURRENT-TYPE-CD
+            AND WS-TCATBAL-LINE(WS-IDX)(14:4) = WS-CURRENT-CAT-CD
+            MOVE WS-IDX TO WS-CURRENT-TCATBAL-IDX
+            SET TCATBAL-FOUND TO TRUE
+        END-IF
+    END-PERFORM
+
+    IF TCATBAL-NOT-FOUND
+        ADD 1 TO WS-TCATBAL-COUNT
+        MOVE SPACES TO WS-TCATBAL-LINE(WS-TCATBAL-COUNT)
+        MOVE WS-CURRENT-ACCOUNT-ID TO WS-TCATBAL-LINE(WS-TCATBAL-COUNT)(1:11)
+        MOVE WS-CURRENT-TYPE-CD TO WS-TCATBAL-LINE(WS-TCATBAL-COUNT)(12:2)
+        MOVE WS-CURRENT-CAT-CD TO WS-TCATBAL-LINE(WS-TCATBAL-COUNT)(14:4)
+        MOVE 0 TO WS-TCATBAL-AMOUNT
+        MOVE WS-TCATBAL-COUNT TO WS-CURRENT-TCATBAL-IDX
+    ELSE
+        MOVE WS-TCATBAL-LINE(WS-CURRENT-TCATBAL-IDX)(18:11)
+            TO WS-AMOUNT-RAW-11-INPUT
+        PERFORM DECODE-AMOUNT-11
+    END-IF
+
+    ADD WS-PENDING-AMOUNT TO WS-TCATBAL-AMOUNT
+    PERFORM ENCODE-AMOUNT-11
+    MOVE WS-TCATBAL-LINE(WS-CURRENT-TCATBAL-IDX) TO WS-TCATBAL-WORK-LINE
+    MOVE WS-AMOUNT-RAW-11 TO WS-TCATBAL-WORK-LINE(18:11)
+    MOVE WS-TCATBAL-WORK-LINE TO WS-TCATBAL-LINE(WS-CURRENT-TCATBAL-IDX).
+
+UPDATE-ACCOUNT.
+    MOVE WS-ACCOUNT-LINE(WS-CURRENT-ACCOUNT-IDX) TO WS-ACCOUNT-WORK-LINE
+
+    MOVE WS-ACCOUNT-WORK-LINE(13:12)
+        TO WS-AMOUNT-RAW-12-INPUT
+    PERFORM DECODE-AMOUNT-12
+    ADD WS-PENDING-AMOUNT TO WS-ACCOUNT-BALANCE
+    PERFORM ENCODE-AMOUNT-12
+    MOVE WS-AMOUNT-RAW-12 TO WS-ACCOUNT-WORK-LINE(13:12)
+
+    MOVE WS-ACCOUNT-WORK-LINE(79:12)
+        TO WS-AMOUNT-RAW-12-INPUT
+    PERFORM DECODE-AMOUNT-12
+    MOVE WS-ACCOUNT-BALANCE TO WS-ACCOUNT-CYC-CREDIT
+    IF WS-PENDING-AMOUNT >= 0
+        ADD WS-PENDING-AMOUNT TO WS-ACCOUNT-CYC-CREDIT
+        MOVE WS-ACCOUNT-CYC-CREDIT TO WS-ACCOUNT-BALANCE
+        PERFORM ENCODE-AMOUNT-12
+        MOVE WS-AMOUNT-RAW-12 TO WS-ACCOUNT-WORK-LINE(79:12)
+    ELSE
+        MOVE WS-ACCOUNT-WORK-LINE(91:12)
+            TO WS-AMOUNT-RAW-12-INPUT
+        PERFORM DECODE-AMOUNT-12
+        MOVE WS-ACCOUNT-BALANCE TO WS-ACCOUNT-CYC-DEBIT
+        ADD WS-PENDING-AMOUNT TO WS-ACCOUNT-CYC-DEBIT
+        MOVE WS-ACCOUNT-CYC-DEBIT TO WS-ACCOUNT-BALANCE
+        PERFORM ENCODE-AMOUNT-12
+        MOVE WS-AMOUNT-RAW-12 TO WS-ACCOUNT-WORK-LINE(91:12)
+    END-IF
+
+    MOVE WS-ACCOUNT-WORK-LINE TO WS-ACCOUNT-LINE(WS-CURRENT-ACCOUNT-IDX).
+
+WRITE-REJECT-RECORD.
+    MOVE ALL " " TO WS-REJECT-RECORD
+    MOVE PENDING-RAW-RECORD TO WS-REJECT-RECORD(1:350)
+    MOVE WS-VALIDATION-CODE TO WS-REJECT-RECORD(351:4)
+    MOVE WS-VALIDATION-DESC TO WS-REJECT-RECORD(355:76)
+    MOVE WS-REJECT-RECORD TO REJECT-RAW-RECORD
+    WRITE REJECT-RAW-RECORD.
+
+SAVE-ACCOUNT-TABLE.
+    OPEN OUTPUT ACCOUNT-FILE
+    IF WS-ACCOUNT-STATUS NOT = "00"
+        DISPLAY "Unable to rewrite account file. Status: " WS-ACCOUNT-STATUS
+        STOP RUN
+    END-IF
+    PERFORM VARYING WS-IDX FROM 1 BY 1 UNTIL WS-IDX > WS-ACCOUNT-COUNT
+        MOVE WS-ACCOUNT-LINE(WS-IDX) TO ACCOUNT-RAW-RECORD
+        WRITE ACCOUNT-RAW-RECORD
+    END-PERFORM
+    CLOSE ACCOUNT-FILE.
+
+SAVE-TCATBAL-TABLE.
+    OPEN OUTPUT TCATBAL-FILE
+    IF WS-TCATBAL-STATUS NOT = "00"
+        DISPLAY "Unable to rewrite tcatbal file. Status: " WS-TCATBAL-STATUS
+        STOP RUN
+    END-IF
+    PERFORM VARYING WS-IDX FROM 1 BY 1 UNTIL WS-IDX > WS-TCATBAL-COUNT
+        MOVE WS-TCATBAL-LINE(WS-IDX) TO TCATBAL-RAW-RECORD
+        WRITE TCATBAL-RAW-RECORD
+    END-PERFORM
+    CLOSE TCATBAL-FILE.
+
+CLEAR-PENDING-QUEUE.
+    OPEN OUTPUT PENDING-FILE
+    IF WS-PENDING-STATUS NOT = "00"
+        DISPLAY "Unable to clear pending queue. Status: " WS-PENDING-STATUS
+        STOP RUN
+    END-IF
+    CLOSE PENDING-FILE.
+
+DECODE-AMOUNT-11.
+    MOVE 0 TO WS-AMOUNT-NUMERIC-11
+    MOVE "+" TO WS-AMOUNT-SIGN
+    MOVE WS-AMOUNT-RAW-11-INPUT(11:1) TO WS-AMOUNT-LAST-DIGIT
+    EVALUATE WS-AMOUNT-LAST-DIGIT
+        WHEN "{"
+            MOVE "0" TO WS-AMOUNT-RAW-11-INPUT(11:1)
+        WHEN "A"
+            MOVE "1" TO WS-AMOUNT-RAW-11-INPUT(11:1)
+        WHEN "B"
+            MOVE "2" TO WS-AMOUNT-RAW-11-INPUT(11:1)
+        WHEN "C"
+            MOVE "3" TO WS-AMOUNT-RAW-11-INPUT(11:1)
+        WHEN "D"
+            MOVE "4" TO WS-AMOUNT-RAW-11-INPUT(11:1)
+        WHEN "E"
+            MOVE "5" TO WS-AMOUNT-RAW-11-INPUT(11:1)
+        WHEN "F"
+            MOVE "6" TO WS-AMOUNT-RAW-11-INPUT(11:1)
+        WHEN "G"
+            MOVE "7" TO WS-AMOUNT-RAW-11-INPUT(11:1)
+        WHEN "H"
+            MOVE "8" TO WS-AMOUNT-RAW-11-INPUT(11:1)
+        WHEN "I"
+            MOVE "9" TO WS-AMOUNT-RAW-11-INPUT(11:1)
+        WHEN "}"
+            MOVE "-" TO WS-AMOUNT-SIGN
+            MOVE "0" TO WS-AMOUNT-RAW-11-INPUT(11:1)
+        WHEN "J"
+            MOVE "-" TO WS-AMOUNT-SIGN
+            MOVE "1" TO WS-AMOUNT-RAW-11-INPUT(11:1)
+        WHEN "K"
+            MOVE "-" TO WS-AMOUNT-SIGN
+            MOVE "2" TO WS-AMOUNT-RAW-11-INPUT(11:1)
+        WHEN "L"
+            MOVE "-" TO WS-AMOUNT-SIGN
+            MOVE "3" TO WS-AMOUNT-RAW-11-INPUT(11:1)
+        WHEN "M"
+            MOVE "-" TO WS-AMOUNT-SIGN
+            MOVE "4" TO WS-AMOUNT-RAW-11-INPUT(11:1)
+        WHEN "N"
+            MOVE "-" TO WS-AMOUNT-SIGN
+            MOVE "5" TO WS-AMOUNT-RAW-11-INPUT(11:1)
+        WHEN "O"
+            MOVE "-" TO WS-AMOUNT-SIGN
+            MOVE "6" TO WS-AMOUNT-RAW-11-INPUT(11:1)
+        WHEN "P"
+            MOVE "-" TO WS-AMOUNT-SIGN
+            MOVE "7" TO WS-AMOUNT-RAW-11-INPUT(11:1)
+        WHEN "Q"
+            MOVE "-" TO WS-AMOUNT-SIGN
+            MOVE "8" TO WS-AMOUNT-RAW-11-INPUT(11:1)
+        WHEN "R"
+            MOVE "-" TO WS-AMOUNT-SIGN
+            MOVE "9" TO WS-AMOUNT-RAW-11-INPUT(11:1)
+    END-EVALUATE
+    COMPUTE WS-AMOUNT-NUMERIC-11 = FUNCTION NUMVAL(WS-AMOUNT-RAW-11-INPUT)
+    COMPUTE WS-TCATBAL-AMOUNT = WS-AMOUNT-NUMERIC-11 / 100
+    IF WS-AMOUNT-SIGN = "-"
+        COMPUTE WS-TCATBAL-AMOUNT = WS-TCATBAL-AMOUNT * -1
+    END-IF.
+
+DECODE-AMOUNT-12.
+    MOVE 0 TO WS-AMOUNT-NUMERIC-12
+    MOVE "+" TO WS-AMOUNT-SIGN
+    MOVE WS-AMOUNT-RAW-12-INPUT(12:1) TO WS-AMOUNT-LAST-DIGIT
+    EVALUATE WS-AMOUNT-LAST-DIGIT
+        WHEN "{"
+            MOVE "0" TO WS-AMOUNT-RAW-12-INPUT(12:1)
+        WHEN "A"
+            MOVE "1" TO WS-AMOUNT-RAW-12-INPUT(12:1)
+        WHEN "B"
+            MOVE "2" TO WS-AMOUNT-RAW-12-INPUT(12:1)
+        WHEN "C"
+            MOVE "3" TO WS-AMOUNT-RAW-12-INPUT(12:1)
+        WHEN "D"
+            MOVE "4" TO WS-AMOUNT-RAW-12-INPUT(12:1)
+        WHEN "E"
+            MOVE "5" TO WS-AMOUNT-RAW-12-INPUT(12:1)
+        WHEN "F"
+            MOVE "6" TO WS-AMOUNT-RAW-12-INPUT(12:1)
+        WHEN "G"
+            MOVE "7" TO WS-AMOUNT-RAW-12-INPUT(12:1)
+        WHEN "H"
+            MOVE "8" TO WS-AMOUNT-RAW-12-INPUT(12:1)
+        WHEN "I"
+            MOVE "9" TO WS-AMOUNT-RAW-12-INPUT(12:1)
+        WHEN "}"
+            MOVE "-" TO WS-AMOUNT-SIGN
+            MOVE "0" TO WS-AMOUNT-RAW-12-INPUT(12:1)
+        WHEN "J"
+            MOVE "-" TO WS-AMOUNT-SIGN
+            MOVE "1" TO WS-AMOUNT-RAW-12-INPUT(12:1)
+        WHEN "K"
+            MOVE "-" TO WS-AMOUNT-SIGN
+            MOVE "2" TO WS-AMOUNT-RAW-12-INPUT(12:1)
+        WHEN "L"
+            MOVE "-" TO WS-AMOUNT-SIGN
+            MOVE "3" TO WS-AMOUNT-RAW-12-INPUT(12:1)
+        WHEN "M"
+            MOVE "-" TO WS-AMOUNT-SIGN
+            MOVE "4" TO WS-AMOUNT-RAW-12-INPUT(12:1)
+        WHEN "N"
+            MOVE "-" TO WS-AMOUNT-SIGN
+            MOVE "5" TO WS-AMOUNT-RAW-12-INPUT(12:1)
+        WHEN "O"
+            MOVE "-" TO WS-AMOUNT-SIGN
+            MOVE "6" TO WS-AMOUNT-RAW-12-INPUT(12:1)
+        WHEN "P"
+            MOVE "-" TO WS-AMOUNT-SIGN
+            MOVE "7" TO WS-AMOUNT-RAW-12-INPUT(12:1)
+        WHEN "Q"
+            MOVE "-" TO WS-AMOUNT-SIGN
+            MOVE "8" TO WS-AMOUNT-RAW-12-INPUT(12:1)
+        WHEN "R"
+            MOVE "-" TO WS-AMOUNT-SIGN
+            MOVE "9" TO WS-AMOUNT-RAW-12-INPUT(12:1)
+    END-EVALUATE
+    COMPUTE WS-AMOUNT-NUMERIC-12 = FUNCTION NUMVAL(WS-AMOUNT-RAW-12-INPUT)
+    COMPUTE WS-ACCOUNT-BALANCE = WS-AMOUNT-NUMERIC-12 / 100
+    IF WS-AMOUNT-SIGN = "-"
+        COMPUTE WS-ACCOUNT-BALANCE = WS-ACCOUNT-BALANCE * -1
+    END-IF.
+
+ENCODE-AMOUNT-11.
+    COMPUTE WS-AMOUNT-ABS-11 = FUNCTION ABS(WS-TCATBAL-AMOUNT * 100)
+    MOVE WS-AMOUNT-ABS-11 TO WS-AMOUNT-ABS-11-TEXT
+    MOVE WS-AMOUNT-RAW-11(11:1) TO WS-AMOUNT-LAST-DIGIT
+    IF WS-TCATBAL-AMOUNT < 0
+        EVALUATE WS-AMOUNT-LAST-DIGIT
+            WHEN "0" MOVE "}" TO WS-AMOUNT-RAW-11(11:1)
+            WHEN "1" MOVE "J" TO WS-AMOUNT-RAW-11(11:1)
+            WHEN "2" MOVE "K" TO WS-AMOUNT-RAW-11(11:1)
+            WHEN "3" MOVE "L" TO WS-AMOUNT-RAW-11(11:1)
+            WHEN "4" MOVE "M" TO WS-AMOUNT-RAW-11(11:1)
+            WHEN "5" MOVE "N" TO WS-AMOUNT-RAW-11(11:1)
+            WHEN "6" MOVE "O" TO WS-AMOUNT-RAW-11(11:1)
+            WHEN "7" MOVE "P" TO WS-AMOUNT-RAW-11(11:1)
+            WHEN "8" MOVE "Q" TO WS-AMOUNT-RAW-11(11:1)
+            WHEN "9" MOVE "R" TO WS-AMOUNT-RAW-11(11:1)
+        END-EVALUATE
+    ELSE
+        EVALUATE WS-AMOUNT-LAST-DIGIT
+            WHEN "0" MOVE "{" TO WS-AMOUNT-RAW-11(11:1)
+            WHEN "1" MOVE "A" TO WS-AMOUNT-RAW-11(11:1)
+            WHEN "2" MOVE "B" TO WS-AMOUNT-RAW-11(11:1)
+            WHEN "3" MOVE "C" TO WS-AMOUNT-RAW-11(11:1)
+            WHEN "4" MOVE "D" TO WS-AMOUNT-RAW-11(11:1)
+            WHEN "5" MOVE "E" TO WS-AMOUNT-RAW-11(11:1)
+            WHEN "6" MOVE "F" TO WS-AMOUNT-RAW-11(11:1)
+            WHEN "7" MOVE "G" TO WS-AMOUNT-RAW-11(11:1)
+            WHEN "8" MOVE "H" TO WS-AMOUNT-RAW-11(11:1)
+            WHEN "9" MOVE "I" TO WS-AMOUNT-RAW-11(11:1)
+        END-EVALUATE
+    END-IF.
+
+ENCODE-AMOUNT-12.
+    COMPUTE WS-AMOUNT-ABS-12 = FUNCTION ABS(WS-ACCOUNT-BALANCE * 100)
+    MOVE WS-AMOUNT-ABS-12 TO WS-AMOUNT-ABS-12-TEXT
+    MOVE WS-AMOUNT-RAW-12(12:1) TO WS-AMOUNT-LAST-DIGIT
+    IF WS-ACCOUNT-BALANCE < 0
+        EVALUATE WS-AMOUNT-LAST-DIGIT
+            WHEN "0" MOVE "}" TO WS-AMOUNT-RAW-12(12:1)
+            WHEN "1" MOVE "J" TO WS-AMOUNT-RAW-12(12:1)
+            WHEN "2" MOVE "K" TO WS-AMOUNT-RAW-12(12:1)
+            WHEN "3" MOVE "L" TO WS-AMOUNT-RAW-12(12:1)
+            WHEN "4" MOVE "M" TO WS-AMOUNT-RAW-12(12:1)
+            WHEN "5" MOVE "N" TO WS-AMOUNT-RAW-12(12:1)
+            WHEN "6" MOVE "O" TO WS-AMOUNT-RAW-12(12:1)
+            WHEN "7" MOVE "P" TO WS-AMOUNT-RAW-12(12:1)
+            WHEN "8" MOVE "Q" TO WS-AMOUNT-RAW-12(12:1)
+            WHEN "9" MOVE "R" TO WS-AMOUNT-RAW-12(12:1)
+        END-EVALUATE
+    ELSE
+        EVALUATE WS-AMOUNT-LAST-DIGIT
+            WHEN "0" MOVE "{" TO WS-AMOUNT-RAW-12(12:1)
+            WHEN "1" MOVE "A" TO WS-AMOUNT-RAW-12(12:1)
+            WHEN "2" MOVE "B" TO WS-AMOUNT-RAW-12(12:1)
+            WHEN "3" MOVE "C" TO WS-AMOUNT-RAW-12(12:1)
+            WHEN "4" MOVE "D" TO WS-AMOUNT-RAW-12(12:1)
+            WHEN "5" MOVE "E" TO WS-AMOUNT-RAW-12(12:1)
+            WHEN "6" MOVE "F" TO WS-AMOUNT-RAW-12(12:1)
+            WHEN "7" MOVE "G" TO WS-AMOUNT-RAW-12(12:1)
+            WHEN "8" MOVE "H" TO WS-AMOUNT-RAW-12(12:1)
+            WHEN "9" MOVE "I" TO WS-AMOUNT-RAW-12(12:1)
+        END-EVALUATE
+    END-IF.
