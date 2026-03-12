@@ -32,7 +32,8 @@
         "serve": {
           "builder": "@angular/build:dev-server",
           "options": {
-            "buildTarget": "carddemo-frontend:build"
+            "buildTarget": "carddemo-frontend:build",
+            "proxyConfig": "proxy.conf.json"
           }
         }
       }

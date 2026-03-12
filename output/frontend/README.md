@@ -4,3 +4,25 @@ Phase 0 now includes the Angular workspace scaffold for the modernization fronte
 This workspace intentionally stops at the minimum standalone application shell needed
 for compilation and later feature slices. Business routes and feature components
 will be added in subsequent stories under `output/frontend/`.
+
+## Development Proxy
+
+Local development uses the Angular dev-server proxy so all frontend code targets the
+shared `/api` base path without enabling wildcard credentialed CORS in FastAPI.
+Requests sent to `/api/*` from the browser are forwarded to the backend at
+`http://127.0.0.1:8000/*`.
+
+Run the paired local dev servers from their workspace roots:
+
+```bash
+cd output/backend
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+```
+
+```bash
+cd output/frontend
+npm start -- --host 127.0.0.1 --port 4200
+```
+
+With both processes running, browser code should call backend routes with relative
+paths such as `/api/openapi.json` or future scaffold endpoints under `/api/jobs`.

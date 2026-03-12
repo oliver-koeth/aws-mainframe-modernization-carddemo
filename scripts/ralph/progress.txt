@@ -6,6 +6,7 @@ Started: Thu Mar 12 20:32:03 CET 2026
 - Run frontend quality checks from `output/frontend/`; keep Angular workspace metadata local to that directory and use `npm run typecheck` (`ngc -p tsconfig.app.json`) as the baseline scaffold validation before build-specific stories land.
 - The frontend shell uses standalone Angular bootstrapping: keep `src/main.ts` focused on `bootstrapApplication(AppComponent, { providers: [provideRouter(routes)] })`, with routes defined in `src/app/routes.ts`.
 - Browser verification for frontend scaffold stories can run against `npm start -- --host 127.0.0.1 --port 4200`; install Playwright's Chromium once with `npx playwright install chromium` if the local cache is empty.
+- Angular's Vite-based dev server proxy config should use `pathRewrite` in JSON proxy files; defining a raw `rewrite` object crashes request forwarding because Vite expects `rewrite` to be a function at runtime.
 
 ---
 ## 2026-03-12 20:33:22 CET - US-001
@@ -52,4 +53,13 @@ Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scri
   - Patterns discovered: Placeholder frontend slices can expose the next insertion point cleanly by adding a standalone route component and using a root-path redirect in `src/app/routes.ts`.
   - Gotchas encountered: Playwright browser verification failed initially until Chromium was installed locally with `npx playwright install chromium`.
   - Useful context: Browser verification for this route used `npm start -- --host 127.0.0.1 --port 4200` plus a headless Playwright script that asserted navigation to `http://127.0.0.1:4200/jobs` and the placeholder text.
+---
+## 2026-03-12 20:51:48 CET - US-006
+Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scripts/ralph/.codex-last-message-iter-4.txt
+- What was implemented: Added an Angular dev-server proxy config that forwards browser requests from `/api/*` to the FastAPI backend on `127.0.0.1:8000`, wired the proxy into the `serve` target, and documented the exact paired backend/frontend local development commands and `/api` convention.
+- Files changed: output/backend/README.md, output/frontend/README.md, output/frontend/angular.json, output/frontend/proxy.conf.json, scripts/ralph/prd.json, scripts/ralph/progress.txt
+- **Learnings for future iterations:**
+  - Patterns discovered: Keep browser-facing frontend requests on the relative `/api` base path and let the Angular dev server strip the prefix before forwarding to FastAPI.
+  - Gotchas encountered: Angular's Vite proxy loader accepts `pathRewrite` in JSON, but a literal `rewrite` object causes runtime proxy crashes because Vite expects a callable rewrite hook.
+  - Useful context: Browser verification succeeded by opening `http://127.0.0.1:4200/jobs` and running `fetch('/api/openapi.json')` in page context, which returned the FastAPI OpenAPI document with title `CardDemo Backend`.
 ---
