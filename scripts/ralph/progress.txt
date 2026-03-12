@@ -5,6 +5,7 @@ Started: Thu Mar 12 20:32:03 CET 2026
 - Run backend quality checks from `output/backend/`; the scaffold is packaged as `app` with editable-install tooling defined in `output/backend/pyproject.toml`.
 - Run frontend quality checks from `output/frontend/`; keep Angular workspace metadata local to that directory and use `npm run typecheck` (`ngc -p tsconfig.app.json`) as the baseline scaffold validation before build-specific stories land.
 - The frontend shell uses standalone Angular bootstrapping: keep `src/main.ts` focused on `bootstrapApplication(AppComponent, { providers: [provideRouter(routes)] })`, with routes defined in `src/app/routes.ts`.
+- Browser verification for frontend scaffold stories can run against `npm start -- --host 127.0.0.1 --port 4200`; install Playwright's Chromium once with `npx playwright install chromium` if the local cache is empty.
 
 ---
 ## 2026-03-12 20:33:22 CET - US-001
@@ -42,4 +43,13 @@ Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scri
   - Patterns discovered: Standalone Angular entrypoints in this scaffold should keep routes centralized in `src/app/routes.ts` and inject them through `provideRouter` during bootstrap.
   - Gotchas encountered: Adding `RouterOutlet` to the shell also requires `@angular/router` in `output/frontend/package.json`; the workspace did not previously depend on it.
   - Useful context: `npm run typecheck` from `output/frontend/` validates both the TypeScript and Angular template wiring for the shell files.
+---
+## 2026-03-12 20:47:06 CET - US-005
+Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scripts/ralph/.codex-last-message-iter-3.txt
+- What was implemented: Added a standalone jobs placeholder component, wired the Angular shell to redirect the root route to `/jobs`, and added a visible Jobs navigation link so the placeholder surface can be reached from the root layout.
+- Files changed: output/frontend/src/app/app.component.html, output/frontend/src/app/app.component.ts, output/frontend/src/app/jobs-placeholder.component.ts, output/frontend/src/app/routes.ts, scripts/ralph/prd.json, scripts/ralph/progress.txt
+- **Learnings for future iterations:**
+  - Patterns discovered: Placeholder frontend slices can expose the next insertion point cleanly by adding a standalone route component and using a root-path redirect in `src/app/routes.ts`.
+  - Gotchas encountered: Playwright browser verification failed initially until Chromium was installed locally with `npx playwright install chromium`.
+  - Useful context: Browser verification for this route used `npm start -- --host 127.0.0.1 --port 4200` plus a headless Playwright script that asserted navigation to `http://127.0.0.1:4200/jobs` and the placeholder text.
 ---

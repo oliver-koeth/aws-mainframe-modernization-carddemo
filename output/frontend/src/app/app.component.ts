@@ -1,10 +1,10 @@
 import { Component } from "@angular/core";
-import { RouterOutlet } from "@angular/router";
+import { RouterLink, RouterLinkActive, RouterOutlet } from "@angular/router";
 
 @Component({
   selector: "app-root",
   standalone: true,
-  imports: [RouterOutlet],
+  imports: [RouterLink, RouterLinkActive, RouterOutlet],
   templateUrl: "./app.component.html",
   styles: [
     `
@@ -31,6 +31,26 @@ import { RouterOutlet } from "@angular/router";
       h1,
       p {
         margin: 0;
+      }
+
+      .shell-header {
+        display: grid;
+        gap: 1rem;
+      }
+
+      .nav-link {
+        border: 1px solid #c9d2de;
+        border-radius: 999px;
+        color: #183153;
+        justify-self: start;
+        padding: 0.5rem 0.9rem;
+        text-decoration: none;
+      }
+
+      .nav-link.active {
+        background: #183153;
+        border-color: #183153;
+        color: #fff;
       }
     `,
   ],
