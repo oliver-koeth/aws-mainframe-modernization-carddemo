@@ -27,6 +27,18 @@ npm start -- --host 127.0.0.1 --port 4200
 With both processes running, browser code should call backend routes with relative
 paths such as `/api/openapi.json` or future scaffold endpoints under `/api/jobs`.
 
+## Build Verification
+
+Use the frontend workspace build command for local verification and later CI wiring:
+
+```bash
+cd output/frontend
+npm run build
+```
+
+The scaffold keeps this command rooted in `output/frontend/` so later UI slices can
+reuse the same verification entrypoint without changing package metadata.
+
 ## Shared API Client
 
 Frontend code should reach backend routes through the shared `ApiClientService` in

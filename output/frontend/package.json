@@ -4,6 +4,7 @@
   "private": true,
   "description": "Phase 0 Angular scaffold for the CardDemo modernization frontend.",
   "scripts": {
+    "build": "ng build",
     "start": "ng serve",
     "typecheck": "ngc -p tsconfig.app.json"
   },
