@@ -3,6 +3,7 @@ Started: Thu Mar 12 20:32:03 CET 2026
 ## Codebase Patterns
 - Keep all modernization scaffold artifacts under `output/`; do not place placeholder backend or frontend files elsewhere in the repository during Phase 0.
 - Run backend quality checks from `output/backend/`; the scaffold is packaged as `app` with editable-install tooling defined in `output/backend/pyproject.toml`.
+- Run frontend quality checks from `output/frontend/`; keep Angular workspace metadata local to that directory and use `npm run typecheck` (`ngc -p tsconfig.app.json`) as the baseline scaffold validation before build-specific stories land.
 
 ---
 ## 2026-03-12 20:33:22 CET - US-001
@@ -22,4 +23,13 @@ Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scri
   - Patterns discovered: Backend verification should use the `output/backend/` workspace directly, with `python -m mypy app`, `python -m pytest`, and editable installs driven by `pyproject.toml`.
   - Gotchas encountered: A scaffold-only backend with zero tests causes `pytest` to exit with code 5, so even the earliest backend slice needs at least one discoverable smoke test.
   - Useful context: `app.main` now exposes both `create_app()` and the module-level `app`, giving later API stories a stable entrypoint for imports and test clients.
+---
+## 2026-03-12 20:40:27 CET - US-003
+Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scripts/ralph/.codex-last-message-iter-1.txt
+- What was implemented: Added the `output/frontend/` Angular workspace scaffold with local package metadata, Angular CLI configuration, TypeScript configs, Playwright placeholder wiring, and minimal standalone bootstrap files for scaffold-only compilation.
+- Files changed: output/frontend/.gitignore, output/frontend/README.md, output/frontend/angular.json, output/frontend/package-lock.json, output/frontend/package.json, output/frontend/playwright.config.ts, output/frontend/public/.gitkeep, output/frontend/src/app/.gitkeep, output/frontend/src/index.html, output/frontend/src/main.ts, output/frontend/src/styles.css, output/frontend/tsconfig.app.json, output/frontend/tsconfig.json, scripts/ralph/prd.json, scripts/ralph/progress.txt
+- **Learnings for future iterations:**
+  - Patterns discovered: The frontend scaffold uses a standalone Angular bootstrap with a temporary inline root component so workspace compilation can pass before `app.component.ts` and routing are introduced.
+  - Gotchas encountered: Root-level `.gitignore` does not exclude frontend dependencies, so `output/frontend/.gitignore` needs to own `node_modules/` and build artifact ignores.
+  - Useful context: `angular.json` already defines the `carddemo-frontend` application and `serve` target, but `npm run build` is intentionally deferred to the later build-story iteration.
 ---
