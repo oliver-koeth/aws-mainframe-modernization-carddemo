@@ -4,6 +4,7 @@ Started: Thu Mar 12 20:32:03 CET 2026
 - Keep all modernization scaffold artifacts under `output/`; do not place placeholder backend or frontend files elsewhere in the repository during Phase 0.
 - Run backend quality checks from `output/backend/`; the scaffold is packaged as `app` with editable-install tooling defined in `output/backend/pyproject.toml`.
 - Run frontend quality checks from `output/frontend/`; keep Angular workspace metadata local to that directory and use `npm run typecheck` (`ngc -p tsconfig.app.json`) as the baseline scaffold validation before build-specific stories land.
+- The frontend shell uses standalone Angular bootstrapping: keep `src/main.ts` focused on `bootstrapApplication(AppComponent, { providers: [provideRouter(routes)] })`, with routes defined in `src/app/routes.ts`.
 
 ---
 ## 2026-03-12 20:33:22 CET - US-001
@@ -32,4 +33,13 @@ Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scri
   - Patterns discovered: The frontend scaffold uses a standalone Angular bootstrap with a temporary inline root component so workspace compilation can pass before `app.component.ts` and routing are introduced.
   - Gotchas encountered: Root-level `.gitignore` does not exclude frontend dependencies, so `output/frontend/.gitignore` needs to own `node_modules/` and build artifact ignores.
   - Useful context: `angular.json` already defines the `carddemo-frontend` application and `serve` target, but `npm run build` is intentionally deferred to the later build-story iteration.
+---
+## 2026-03-12 20:43:04 CET - US-004
+Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scripts/ralph/.codex-last-message-iter-11.txt
+- What was implemented: Replaced the temporary inline bootstrap component with the scaffold's real standalone app shell files, adding `AppComponent`, `routes.ts`, and router-based application bootstrap wiring.
+- Files changed: output/frontend/package-lock.json, output/frontend/package.json, output/frontend/src/app/app.component.html, output/frontend/src/app/app.component.ts, output/frontend/src/app/routes.ts, output/frontend/src/main.ts, scripts/ralph/.codex-last-message-iter-11.txt, scripts/ralph/prd.json, scripts/ralph/progress.txt
+- **Learnings for future iterations:**
+  - Patterns discovered: Standalone Angular entrypoints in this scaffold should keep routes centralized in `src/app/routes.ts` and inject them through `provideRouter` during bootstrap.
+  - Gotchas encountered: Adding `RouterOutlet` to the shell also requires `@angular/router` in `output/frontend/package.json`; the workspace did not previously depend on it.
+  - Useful context: `npm run typecheck` from `output/frontend/` validates both the TypeScript and Angular template wiring for the shell files.
 ---
