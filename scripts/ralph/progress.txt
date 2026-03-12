@@ -161,3 +161,12 @@ Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scri
   - Gotchas encountered: The README acceptance for backend conventions is not satisfied by startup notes alone; it also needs explicit storage-file purpose and a reminder that `/jobs`, `/accounts`, and `/transactions` are temporary scaffold endpoints.
   - Useful context: `.venv/bin/python -m mypy app`, `.venv/bin/python -m pytest`, and `.venv/bin/python -c "import app.main"` all passed from `output/backend/` on March 12, 2026.
 ---
+## 2026-03-12 21:43:30 CET - US-017
+Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scripts/ralph/.codex-last-message-iter-12.txt
+- What was implemented: Expanded the frontend scaffold README to document the Node.js 20 LTS and npm workspace defaults, the canonical startup/typecheck/build/Playwright commands, the shared `'/api'` proxy strategy, and how to open the `/jobs` placeholder route during local development.
+- Files changed: output/frontend/README.md, scripts/ralph/prd.json, scripts/ralph/progress.txt
+- **Learnings for future iterations:**
+  - Patterns discovered: Frontend scaffold documentation should keep the default verification loop together in `output/frontend/README.md` with `npm run typecheck`, `npm run build`, and `npm run test:e2e` called from the workspace root.
+  - Gotchas encountered: The local machine is currently running Node.js `v25.6.0`, so Angular and Playwright checks pass with a non-LTS warning even though the documented project baseline remains Node.js 20 LTS.
+  - Useful context: `npm start -- --host 127.0.0.1 --port 4200` serves the placeholder route at `/jobs`, and `npm run test:e2e` still boots both frontend and backend automatically through Playwright's `webServer` configuration.
+---

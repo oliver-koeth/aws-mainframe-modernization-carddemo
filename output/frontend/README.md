@@ -5,6 +5,23 @@ This workspace intentionally stops at the minimum standalone application shell n
 for compilation and later feature slices. Business routes and feature components
 will be added in subsequent stories under `output/frontend/`.
 
+## Workspace Defaults
+
+Use Node.js 20 LTS with npm from the `output/frontend/` workspace root.
+The scaffold's default verification commands are:
+
+```bash
+cd output/frontend
+npm install
+npm run typecheck
+npm run build
+npm run test:e2e
+```
+
+`npm run typecheck` validates the standalone Angular application with `ngc`,
+`npm run build` produces the distributable bundle, and `npm run test:e2e` runs
+the Playwright smoke suite against the paired frontend and backend.
+
 ## Development Proxy
 
 Local development uses the Angular dev-server proxy so all frontend code targets the
@@ -26,6 +43,8 @@ npm start -- --host 127.0.0.1 --port 4200
 
 With both processes running, browser code should call backend routes with relative
 paths such as `/api/openapi.json` or future scaffold endpoints under `/api/jobs`.
+Open `http://127.0.0.1:4200/jobs` to load the placeholder Jobs route through the
+Angular shell while the dev server proxies backend calls to FastAPI.
 
 ## Build Verification
 
@@ -38,6 +57,16 @@ npm run build
 
 The scaffold keeps this command rooted in `output/frontend/` so later UI slices can
 reuse the same verification entrypoint without changing package metadata.
+
+## Typecheck Verification
+
+Use the frontend typecheck command before committing workspace or documentation
+changes that affect Angular sources or tooling assumptions:
+
+```bash
+cd output/frontend
+npm run typecheck
+```
 
 ## Playwright Smoke Tests
 
