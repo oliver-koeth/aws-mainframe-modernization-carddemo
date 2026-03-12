@@ -45,6 +45,10 @@ See [GNUCOBOL_RUNTIME.md](/Users/Oliver.Koeth/work/aws-mainframe-modernization-c
 
 The GNUCobol runtime also includes local init/reset scripts so the flat-file datasets can be recreated without the original JCL setup flow.
 
+## Phase 0 Modernization Scaffold
+
+Phase 0 of the Angular/FastAPI modernization is scaffolding only. The new workspace is rooted under `output/` so later slices can add backend, frontend, and docs artifacts without mixing placeholder modernization files into the existing CardDemo source tree.
+
 ## Technologies
 
 ### Core Technologies

@@ -1,0 +1,15 @@
+# Ralph Progress Log
+Started: Thu Mar 12 20:32:03 CET 2026
+## Codebase Patterns
+- Keep all modernization scaffold artifacts under `output/`; do not place placeholder backend or frontend files elsewhere in the repository during Phase 0.
+
+---
+## 2026-03-12 20:33:22 CET - US-001
+Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scripts/ralph/.codex-last-message-iter-1.txt
+- What was implemented: Created the Phase 0 `output/` workspace root with backend, frontend, and docs directories plus placeholder backend/frontend READMEs and JSON storage files.
+- Files changed: README.md, output/backend/README.md, output/backend/store.json, output/backend/schedules.json, output/docs/.gitkeep, output/frontend/README.md, scripts/ralph/prd.json, scripts/ralph/progress.txt
+- **Learnings for future iterations:**
+  - Patterns discovered: Phase 0 scaffold work should be rooted entirely under `output/`, with the root README used for high-level phase notes.
+  - Gotchas encountered: This first story does not yet have project-local mypy/pytest/npm quality targets; only applicable validation was JSON syntax and patch hygiene.
+  - Useful context: `output/docs/` currently exists as an empty placeholder directory preserved via `.gitkeep`.
+---

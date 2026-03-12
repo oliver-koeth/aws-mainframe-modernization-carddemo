@@ -1,0 +1,277 @@
+{
+  "project": "carddemo",
+  "branchName": "ralph/phase-0-scaffolding",
+  "description": "Phase 0 scaffolding for the CardDemo GNUCobol modernization: create the output-rooted Angular and FastAPI filesystem, establish proxy-based frontend/backend integration, add JSON storage primitives, and set up backend/frontend verification harnesses before any business migration. Defaults for this phase are Python 3.12, Node.js 20 LTS, npm, backend typechecking with mypy, backend tests with pytest, frontend build with npm run build, and frontend smoke tests with Playwright.",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Create output-rooted migration workspace skeleton",
+      "description": "As a developer, I want the modernization workspace rooted under output so later slices can add backend, frontend, and docs artifacts without revisiting repository layout.",
+      "acceptanceCriteria": [
+        "Create output/backend/, output/frontend/, and output/docs/ directories.",
+        "Create placeholder files for output/backend/README.md, output/frontend/README.md, output/backend/store.json, and output/backend/schedules.json.",
+        "Do not create business-domain source files outside output/ for this modernization scaffold.",
+        "Document in a root-level note or README update that Phase 0 is scaffolding only.",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-002",
+      "title": "Create FastAPI backend package scaffold",
+      "description": "As a developer, I want a canonical FastAPI package under output/backend so later slices can add APIs, services, jobs, and tests without reworking file structure.",
+      "acceptanceCriteria": [
+        "Create output/backend/app/ and output/backend/tests/ directories.",
+        "Add backend modules at minimum: __init__.py, main.py, models.py, storage.py, services.py, jobs.py, and scheduler.py under output/backend/app/.",
+        "Add output/backend/pyproject.toml targeting Python 3.12 with the dependencies and tooling configuration needed for backend import, mypy typechecking, and pytest discovery.",
+        "Backend imports cleanly from the output/backend workspace.",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-003",
+      "title": "Create Angular frontend workspace scaffold",
+      "description": "As a developer, I want the output/frontend workspace and package metadata created so later frontend stories can add the Angular shell on top of a stable directory structure.",
+      "acceptanceCriteria": [
+        "Create output/frontend/ with package.json, README.md, playwright.config.ts, and Angular source directories using npm and a Node.js 20 LTS compatible setup.",
+        "Do not add business feature components in this story beyond the minimum workspace scaffold.",
+        "Frontend workspace files are located entirely under output/frontend/.",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-004",
+      "title": "Add Angular standalone app shell files",
+      "description": "As a developer, I want the Angular standalone shell files created so later UI stories can add routes and screens without rebuilding the app entrypoints.",
+      "acceptanceCriteria": [
+        "Add standalone app shell files at minimum: app.component.ts, app.component.html, and routes.ts.",
+        "Do not use NgModule-based bootstrapping for the new frontend scaffold.",
+        "The shell compiles as part of the frontend workspace.",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-005",
+      "title": "Add jobs placeholder component and route",
+      "description": "As a developer, I want a jobs placeholder component and route so the later batch admin UI has a stable insertion point in the frontend shell.",
+      "acceptanceCriteria": [
+        "Add a jobs placeholder component in the output/frontend app source.",
+        "Add a route for the jobs surface using the standalone Angular routing setup.",
+        "The root layout can navigate to or render the jobs placeholder without runtime errors.",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-006",
+      "title": "Configure proxy-based frontend/backend integration",
+      "description": "As a developer, I want one explicit API origin strategy so frontend calls work consistently in development and later slices avoid CORS drift.",
+      "acceptanceCriteria": [
+        "Configure Angular proxying so /api/* routes to the FastAPI backend in development.",
+        "Use '/api' as the shared frontend API base path.",
+        "Do not rely on wildcard CORS with credentials.",
+        "Document the exact local dev commands needed to run frontend and backend together using the proxy strategy, with npm as the frontend package manager.",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-007",
+      "title": "Implement health endpoint",
+      "description": "As a developer, I want a minimal FastAPI health endpoint so the scaffold backend can be started and verified before any domain APIs exist.",
+      "acceptanceCriteria": [
+        "Implement GET /health returning JSON with application/json.",
+        "Backend startup smoke checks pass, including python -c \"import app.main\" from output/backend.",
+        "Add or update tests covering the health endpoint response shape.",
+        "Tests pass",
+        "Typecheck passes"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-008",
+      "title": "Implement placeholder collection endpoints",
+      "description": "As a developer, I want scaffolding-only collection endpoints so the frontend shell and smoke tests can exercise stable JSON contracts before domain migration starts.",
+      "acceptanceCriteria": [
+        "Implement scaffolding-only GET /jobs, GET /accounts, and GET /transactions endpoints returning empty JSON arrays.",
+        "Mark placeholder endpoints clearly in code or docs as temporary scaffold contracts for Phase 0.",
+        "Add or update tests covering the placeholder endpoint JSON responses.",
+        "Tests pass",
+        "Typecheck passes"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-009",
+      "title": "Add shared frontend API client foundation",
+      "description": "As a developer, I want a shared frontend API client so later UI slices can call scaffold and business endpoints through one stable abstraction.",
+      "acceptanceCriteria": [
+        "Add a shared frontend API service or equivalent foundation that targets the '/api' base path.",
+        "The shell can request scaffold endpoints without manual URL rewrites.",
+        "Keep the API client implementation inside output/frontend/.",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-010",
+      "title": "Implement JSON storage serialization and atomic writes",
+      "description": "As a developer, I want shared JSON persistence primitives so later domain and batch slices can safely store application data and schedule declarations.",
+      "acceptanceCriteria": [
+        "Use output/backend/store.json as the single application data file.",
+        "Create and use output/backend/schedules.json for schedule declarations.",
+        "Implement serializer and deserializer support for Decimal, date, and datetime values.",
+        "Write store updates atomically using a temp-file-plus-rename pattern.",
+        "Storage round-trip tests verify typed values survive write and reload using pytest.",
+        "Tests pass",
+        "Typecheck passes"
+      ],
+      "priority": 10,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-011",
+      "title": "Add shared write locking for storage updates",
+      "description": "As a developer, I want shared locking around JSON writes so later API and batch slices do not corrupt the store during concurrent updates.",
+      "acceptanceCriteria": [
+        "Implement a documented locking strategy in shared storage code rather than per-feature call sites.",
+        "Locking failure behavior is deterministic and surfaced in a testable way.",
+        "Add at least one test covering lock contention or concurrent write protection.",
+        "The locking approach remains compatible with future interactive API and batch job handlers.",
+        "Tests pass",
+        "Typecheck passes"
+      ],
+      "priority": 11,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-012",
+      "title": "Add backend pytest harness and fixtures",
+      "description": "As a developer, I want baseline backend tests and fixtures so later slices can extend verification without rebuilding the test foundation.",
+      "acceptanceCriteria": [
+        "Add pytest configuration and baseline tests under output/backend/tests/.",
+        "Provide reusable fixtures for disposable store.json and schedules.json files.",
+        "Add tests for backend import, health endpoint JSON responses, and storage round-trip behavior.",
+        "Pytest discovers and runs the baseline backend test suite successfully via python -m pytest.",
+        "Backend typechecking runs successfully via python -m mypy app.",
+        "Tests pass",
+        "Typecheck passes"
+      ],
+      "priority": 12,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-013",
+      "title": "Add frontend build command and verification wiring",
+      "description": "As a developer, I want a stable frontend build command so the scaffold can be verified locally and in later CI automation.",
+      "acceptanceCriteria": [
+        "Add a frontend build command suitable for local verification and CI use as npm run build.",
+        "Frontend build succeeds from output/frontend/.",
+        "Document the build command in output/frontend/README.md.",
+        "Typecheck passes"
+      ],
+      "priority": 13,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-014",
+      "title": "Add Playwright configuration and smoke test skeleton",
+      "description": "As a developer, I want Playwright configured with baseline smoke test files so later UI slices can add browser checks without redoing test setup.",
+      "acceptanceCriteria": [
+        "Add Playwright configuration under output/frontend/ and baseline smoke test files under output/frontend/e2e/.",
+        "The smoke test skeleton is runnable against the scaffolded frontend and backend together via Playwright.",
+        "Document how to run the Playwright smoke tests.",
+        "Tests pass",
+        "Typecheck passes"
+      ],
+      "priority": 14,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-015",
+      "title": "Add browser smoke test for scaffold JSON endpoints",
+      "description": "As a developer, I want a browser smoke test that exercises the scaffold JSON endpoints so frontend/backend integration is proven before business features exist.",
+      "acceptanceCriteria": [
+        "Add a browser smoke test that confirms /jobs, /accounts, and /transactions responses can be fetched from frontend context and parsed as JSON.",
+        "The test runs against the scaffolded frontend and backend together.",
+        "Tests pass",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 15,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-016",
+      "title": "Document backend scaffold conventions",
+      "description": "As a developer or autonomous agent, I want backend scaffold conventions documented so later slices can reuse the same commands and storage assumptions.",
+      "acceptanceCriteria": [
+        "Document backend startup, build, test, and storage conventions in output/backend/README.md using Python 3.12, python -m mypy app, and python -m pytest as defaults.",
+        "Document the purpose of output/backend/store.json and output/backend/schedules.json.",
+        "Document that placeholder API endpoints are temporary scaffold contracts for Phase 0.",
+        "Typecheck passes"
+      ],
+      "priority": 16,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-017",
+      "title": "Document frontend scaffold conventions",
+      "description": "As a developer or autonomous agent, I want frontend scaffold conventions documented so later slices can reuse the same commands and proxy assumptions.",
+      "acceptanceCriteria": [
+        "Document frontend startup, proxying, build, and test conventions in output/frontend/README.md using Node.js 20 LTS, npm, npm run build, and Playwright as defaults.",
+        "Document the '/api' base path and proxy strategy.",
+        "Document how to run the jobs placeholder route and smoke tests.",
+        "Typecheck passes"
+      ],
+      "priority": 17,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-018",
+      "title": "Document root-level Phase 0 scope note",
+      "description": "As a developer or reviewer, I want a root-level note about Phase 0 scope so the scaffold is not mistaken for completed business migration.",
+      "acceptanceCriteria": [
+        "Add or update one root-level documentation file to state that Phase 0 is scaffolding only.",
+        "Document that root-level CI or task-runner work is deferred unless needed to make documented commands runnable.",
+        "Reference the output/ workspace as the target root for generated migration artifacts.",
+        "Typecheck passes"
+      ],
+      "priority": 18,
+      "passes": false,
+      "notes": ""
+    }
+  ]
+}
