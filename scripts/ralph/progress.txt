@@ -8,6 +8,7 @@ Started: Thu Mar 12 20:32:03 CET 2026
 - The frontend shell uses standalone Angular bootstrapping: keep `src/main.ts` focused on `bootstrapApplication(AppComponent, { providers: [provideRouter(routes)] })`, with routes defined in `src/app/routes.ts`.
 - Browser verification for frontend scaffold stories can run against `npm start -- --host 127.0.0.1 --port 4200`; install Playwright's Chromium once with `npx playwright install chromium` if the local cache is empty.
 - Angular's Vite-based dev server proxy config should use `pathRewrite` in JSON proxy files; defining a raw `rewrite` object crashes request forwarding because Vite expects `rewrite` to be a function at runtime.
+- Frontend routes should consume backend data through `src/app/api-client.service.ts`; keep the shared `'/api'` base path in that service instead of hard-coding proxy-prefixed URLs in components.
 
 ---
 ## 2026-03-12 20:33:22 CET - US-001
@@ -81,4 +82,13 @@ Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scri
   - Patterns discovered: Reuse a shared helper in `app.main` when multiple scaffold endpoints intentionally return the same placeholder JSON contract.
   - Gotchas encountered: The acceptance checks still need to run through `output/backend/.venv/bin/python` on this machine because the project-local backend toolchain is not available via a global `python` command.
   - Useful context: Placeholder collection coverage currently lives alongside the health endpoint smoke tests in `output/backend/tests/test_health.py`.
+---
+## 2026-03-12 21:00:27 CET - US-009
+Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scripts/ralph/.codex-last-message-iter-7.txt
+- What was implemented: Added a shared Angular `ApiClientService` rooted at `'/api'`, provided `HttpClient` during standalone bootstrap, and updated the jobs placeholder route to fetch the scaffold jobs collection through that shared client.
+- Files changed: output/frontend/README.md, output/frontend/src/app/api-client.service.ts, output/frontend/src/app/jobs-placeholder.component.ts, output/frontend/src/main.ts, scripts/ralph/prd.json, scripts/ralph/progress.txt
+- **Learnings for future iterations:**
+  - Patterns discovered: Keep proxy-aware backend calls centralized in `ApiClientService` so route components only ask for domain data and do not duplicate the `'/api'` prefix.
+  - Gotchas encountered: Frontend quality checks generate local `.angular/` and `out-tsc/` artifacts that should be cleaned before commit because they are not ignored by the repo root.
+  - Useful context: Browser verification for this story used the running backend on `127.0.0.1:8000`, the Angular dev server on `127.0.0.1:4200`, and a headless Playwright script that asserted the `/jobs` page rendered `Connected to /api/jobs` with a zero-length placeholder collection.
 ---

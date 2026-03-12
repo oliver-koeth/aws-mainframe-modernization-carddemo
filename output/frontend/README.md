@@ -26,3 +26,10 @@ npm start -- --host 127.0.0.1 --port 4200
 
 With both processes running, browser code should call backend routes with relative
 paths such as `/api/openapi.json` or future scaffold endpoints under `/api/jobs`.
+
+## Shared API Client
+
+Frontend code should reach backend routes through the shared `ApiClientService` in
+`src/app/api-client.service.ts`. The service owns the `'/api'` base path so routed
+components can request scaffold endpoints without hard-coding backend origins or
+duplicating URL prefix logic.
