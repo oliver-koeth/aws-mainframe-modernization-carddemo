@@ -152,3 +152,12 @@ Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scri
   - Gotchas encountered: Keeping the new endpoint checks in the existing `/jobs` smoke flow avoids adding extra routing or server boot complexity while still satisfying browser verification.
   - Useful context: `npm run typecheck` and `npm run test:e2e` both passed on March 12, 2026 for this story, with Playwright running two smoke tests against the paired backend/frontend servers.
 ---
+## 2026-03-12 21:40:49 CET - US-016
+Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scripts/ralph/.codex-last-message-iter-12.txt
+- What was implemented: Expanded the backend scaffold README to document the Python 3.12 setup flow, the canonical startup/typecheck/test commands, the roles of `store.json` and `schedules.json`, and the Phase 0 placeholder endpoint contract.
+- Files changed: output/backend/README.md, scripts/ralph/prd.json, scripts/ralph/progress.txt
+- **Learnings for future iterations:**
+  - Patterns discovered: Backend documentation in this scaffold should point to the project-local `.venv/bin/python` commands so startup, pytest, and mypy use the same editable install.
+  - Gotchas encountered: The README acceptance for backend conventions is not satisfied by startup notes alone; it also needs explicit storage-file purpose and a reminder that `/jobs`, `/accounts`, and `/transactions` are temporary scaffold endpoints.
+  - Useful context: `.venv/bin/python -m mypy app`, `.venv/bin/python -m pytest`, and `.venv/bin/python -c "import app.main"` all passed from `output/backend/` on March 12, 2026.
+---
