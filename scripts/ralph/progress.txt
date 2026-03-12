@@ -2,6 +2,7 @@
 Started: Thu Mar 12 20:32:03 CET 2026
 ## Codebase Patterns
 - Keep all modernization scaffold artifacts under `output/`; do not place placeholder backend or frontend files elsewhere in the repository during Phase 0.
+- Run backend quality checks from `output/backend/`; the scaffold is packaged as `app` with editable-install tooling defined in `output/backend/pyproject.toml`.
 
 ---
 ## 2026-03-12 20:33:22 CET - US-001
@@ -12,4 +13,13 @@ Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scri
   - Patterns discovered: Phase 0 scaffold work should be rooted entirely under `output/`, with the root README used for high-level phase notes.
   - Gotchas encountered: This first story does not yet have project-local mypy/pytest/npm quality targets; only applicable validation was JSON syntax and patch hygiene.
   - Useful context: `output/docs/` currently exists as an empty placeholder directory preserved via `.gitkeep`.
+---
+## 2026-03-12 20:41:32 CET - US-002
+Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scripts/ralph/.codex-last-message-iter-10.txt
+- What was implemented: Added the canonical FastAPI backend scaffold under `output/backend/` with a typed `app/` package, backend `pyproject.toml`, placeholder service/storage/job modules, and a minimal import test so the scaffold can be validated.
+- Files changed: output/backend/README.md, output/backend/app/__init__.py, output/backend/app/jobs.py, output/backend/app/main.py, output/backend/app/models.py, output/backend/app/scheduler.py, output/backend/app/services.py, output/backend/app/storage.py, output/backend/pyproject.toml, output/backend/tests/__init__.py, output/backend/tests/test_import.py, scripts/ralph/prd.json, scripts/ralph/progress.txt
+- **Learnings for future iterations:**
+  - Patterns discovered: Backend verification should use the `output/backend/` workspace directly, with `python -m mypy app`, `python -m pytest`, and editable installs driven by `pyproject.toml`.
+  - Gotchas encountered: A scaffold-only backend with zero tests causes `pytest` to exit with code 5, so even the earliest backend slice needs at least one discoverable smoke test.
+  - Useful context: `app.main` now exposes both `create_app()` and the module-level `app`, giving later API stories a stable entrypoint for imports and test clients.
 ---
