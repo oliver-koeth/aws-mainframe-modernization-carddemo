@@ -6,6 +6,8 @@ The canonical FastAPI package lives in `app/`, with placeholder modules for APIs
 
 The scaffold backend currently exposes `GET /health`, plus temporary `GET /jobs`, `GET /accounts`, and `GET /transactions` placeholder collection endpoints. Those collection routes are Phase 0 scaffold contracts only and intentionally return empty JSON arrays until business migration stories replace them.
 
+Shared JSON writes go through `app.storage`, which serializes updates with a same-directory `.lock` file per target JSON document before performing the existing temp-file-plus-rename replacement. Future API and batch code should keep using `write_store`, `write_schedules`, or `write_json_file` directly instead of implementing ad hoc write locks at call sites.
+
 ## Local Development
 
 Run the scaffold backend from this directory with:

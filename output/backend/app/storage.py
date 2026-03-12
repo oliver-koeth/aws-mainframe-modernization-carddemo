@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import json
+import os
+import time
+from contextlib import contextmanager
 from datetime import date, datetime
 from decimal import Decimal
 from app.models import StoragePaths
 from pathlib import Path
 from tempfile import NamedTemporaryFile
-from typing import Any, TypeAlias, cast
+from typing import Any, Iterator, TypeAlias, cast
 
 
 def get_storage_targets(paths: StoragePaths) -> tuple[str, str]:
@@ -26,6 +29,13 @@ _VALUE_KEY = "value"
 _DECIMAL_TYPE = "decimal"
 _DATE_TYPE = "date"
 _DATETIME_TYPE = "datetime"
+_LOCK_SUFFIX = ".lock"
+_LOCK_TIMEOUT_SECONDS = 1.0
+_LOCK_POLL_INTERVAL_SECONDS = 0.05
+
+
+class StorageLockTimeoutError(RuntimeError):
+    """Raised when a scaffold storage write cannot acquire its shared lock."""
 
 
 def read_store(paths: StoragePaths) -> StorageValue:
@@ -60,24 +70,61 @@ def read_json_file(path: Path, *, default: StorageValue) -> StorageValue:
 
 
 def write_json_file(path: Path, payload: StorageValue) -> None:
-    """Write JSON content atomically using a temp file and rename."""
+    """Write JSON content atomically using a shared lock, temp file, and rename."""
     path.parent.mkdir(parents=True, exist_ok=True)
     encoded_payload = _encode_typed_values(payload)
 
-    with NamedTemporaryFile(
-        "w",
-        encoding="utf-8",
-        dir=path.parent,
-        prefix=f".{path.name}.",
-        suffix=".tmp",
-        delete=False,
-    ) as handle:
-        json.dump(encoded_payload, handle, indent=2, sort_keys=True)
-        handle.write("\n")
-        handle.flush()
-        temp_path = Path(handle.name)
+    with _acquire_write_lock(path):
+        with NamedTemporaryFile(
+            "w",
+            encoding="utf-8",
+            dir=path.parent,
+            prefix=f".{path.name}.",
+            suffix=".tmp",
+            delete=False,
+        ) as handle:
+            json.dump(encoded_payload, handle, indent=2, sort_keys=True)
+            handle.write("\n")
+            handle.flush()
+            temp_path = Path(handle.name)
 
-    temp_path.replace(path)
+        temp_path.replace(path)
+
+
+@contextmanager
+def _acquire_write_lock(path: Path) -> Iterator[None]:
+    """Serialize writes per storage file with a same-directory lock file."""
+    lock_path = _lock_path_for(path)
+    deadline = time.monotonic() + _LOCK_TIMEOUT_SECONDS
+
+    while True:
+        try:
+            descriptor = os.open(
+                lock_path,
+                os.O_CREAT | os.O_EXCL | os.O_WRONLY,
+                0o600,
+            )
+            break
+        except FileExistsError as error:
+            if time.monotonic() >= deadline:
+                raise StorageLockTimeoutError(
+                    f"Timed out acquiring storage lock for {path}"
+                ) from error
+            time.sleep(_LOCK_POLL_INTERVAL_SECONDS)
+
+    try:
+        os.close(descriptor)
+        yield
+    finally:
+        try:
+            lock_path.unlink()
+        except FileNotFoundError:
+            pass
+
+
+def _lock_path_for(path: Path) -> Path:
+    """Place the lock file next to the target JSON file."""
+    return path.with_name(f"{path.name}{_LOCK_SUFFIX}")
 
 
 def _encode_typed_values(value: Any) -> JsonValue:
