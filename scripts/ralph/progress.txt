@@ -73,3 +73,12 @@ Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scri
   - Gotchas encountered: The local machine did not expose a `python` executable or backend dependencies globally, so backend acceptance checks had to run through `output/backend/.venv/bin/python`.
   - Useful context: The health endpoint response contract is currently `{"status": "ok"}` with FastAPI's default `200 OK` JSON response semantics.
 ---
+## 2026-03-12 20:56:16 CET - US-008
+Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scripts/ralph/.codex-last-message-iter-6.txt
+- What was implemented: Added the temporary scaffold `GET /jobs`, `GET /accounts`, and `GET /transactions` FastAPI collection endpoints, each returning an empty JSON array, and documented them as Phase 0-only contracts in the backend README.
+- Files changed: output/backend/README.md, output/backend/app/main.py, output/backend/tests/test_health.py, scripts/ralph/prd.json, scripts/ralph/progress.txt
+- **Learnings for future iterations:**
+  - Patterns discovered: Reuse a shared helper in `app.main` when multiple scaffold endpoints intentionally return the same placeholder JSON contract.
+  - Gotchas encountered: The acceptance checks still need to run through `output/backend/.venv/bin/python` on this machine because the project-local backend toolchain is not available via a global `python` command.
+  - Useful context: Placeholder collection coverage currently lives alongside the health endpoint smoke tests in `output/backend/tests/test_health.py`.
+---
