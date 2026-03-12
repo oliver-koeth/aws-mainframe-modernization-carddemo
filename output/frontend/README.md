@@ -39,6 +39,20 @@ npm run build
 The scaffold keeps this command rooted in `output/frontend/` so later UI slices can
 reuse the same verification entrypoint without changing package metadata.
 
+## Playwright Smoke Tests
+
+The baseline browser smoke tests live under `output/frontend/e2e/` and run the
+scaffolded frontend and backend together before executing Playwright checks.
+
+```bash
+cd output/frontend
+npm run test:e2e
+```
+
+The Playwright config starts the backend from `../backend/.venv/bin/python` on
+`127.0.0.1:8000` and the Angular dev server on `127.0.0.1:4200`, then runs the
+smoke suite against the proxied frontend at `/jobs`.
+
 ## Shared API Client
 
 Frontend code should reach backend routes through the shared `ApiClientService` in

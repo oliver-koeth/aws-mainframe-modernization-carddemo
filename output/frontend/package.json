@@ -6,6 +6,7 @@
   "scripts": {
     "build": "ng build",
     "start": "ng serve",
+    "test:e2e": "playwright test",
     "typecheck": "ngc -p tsconfig.app.json"
   },
   "engines": {
