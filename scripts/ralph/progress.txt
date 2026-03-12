@@ -3,6 +3,7 @@ Started: Thu Mar 12 20:32:03 CET 2026
 ## Codebase Patterns
 - Keep all modernization scaffold artifacts under `output/`; do not place placeholder backend or frontend files elsewhere in the repository during Phase 0.
 - Run backend quality checks from `output/backend/`; the scaffold is packaged as `app` with editable-install tooling defined in `output/backend/pyproject.toml`.
+- On fresh machines, bootstrap backend checks with `python3 -m venv .venv` and `.venv/bin/pip install -e '.[dev]'`, then run smoke checks, pytest, and mypy through `.venv/bin/python`.
 - Run frontend quality checks from `output/frontend/`; keep Angular workspace metadata local to that directory and use `npm run typecheck` (`ngc -p tsconfig.app.json`) as the baseline scaffold validation before build-specific stories land.
 - The frontend shell uses standalone Angular bootstrapping: keep `src/main.ts` focused on `bootstrapApplication(AppComponent, { providers: [provideRouter(routes)] })`, with routes defined in `src/app/routes.ts`.
 - Browser verification for frontend scaffold stories can run against `npm start -- --host 127.0.0.1 --port 4200`; install Playwright's Chromium once with `npx playwright install chromium` if the local cache is empty.
@@ -62,4 +63,13 @@ Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scri
   - Patterns discovered: Keep browser-facing frontend requests on the relative `/api` base path and let the Angular dev server strip the prefix before forwarding to FastAPI.
   - Gotchas encountered: Angular's Vite proxy loader accepts `pathRewrite` in JSON, but a literal `rewrite` object causes runtime proxy crashes because Vite expects a callable rewrite hook.
   - Useful context: Browser verification succeeded by opening `http://127.0.0.1:4200/jobs` and running `fetch('/api/openapi.json')` in page context, which returned the FastAPI OpenAPI document with title `CardDemo Backend`.
+---
+## 2026-03-12 20:56:00 CET - US-007
+Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scripts/ralph/.codex-last-message-iter-5.txt
+- What was implemented: Added the scaffold `GET /health` FastAPI endpoint returning a minimal JSON payload, documented it in the backend README, and added a backend test covering the response body and JSON content type.
+- Files changed: output/backend/README.md, output/backend/app/main.py, output/backend/tests/test_health.py, scripts/ralph/prd.json, scripts/ralph/progress.txt
+- **Learnings for future iterations:**
+  - Patterns discovered: Small scaffold endpoints should be added inside `create_app()` so both the module-level `app` and freshly created test instances share identical route wiring.
+  - Gotchas encountered: The local machine did not expose a `python` executable or backend dependencies globally, so backend acceptance checks had to run through `output/backend/.venv/bin/python`.
+  - Useful context: The health endpoint response contract is currently `{"status": "ok"}` with FastAPI's default `200 OK` JSON response semantics.
 ---
