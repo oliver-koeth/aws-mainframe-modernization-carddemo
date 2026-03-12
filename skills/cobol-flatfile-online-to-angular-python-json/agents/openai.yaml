@@ -1,0 +1,4 @@
+interface:
+  display_name: "COBOL Flatfile Migration"
+  short_description: "Migrate COBOL flat-file apps with online and batch flows"
+  default_prompt: "Use $cobol-flatfile-online-to-angular-python-json to migrate my COBOL flat-file programs into Angular + FastAPI with schedulable, monitorable batch jobs and tests."
