@@ -11,6 +11,7 @@ Started: Thu Mar 12 20:32:03 CET 2026
 - Frontend routes should consume backend data through `src/app/api-client.service.ts`; keep the shared `'/api'` base path in that service instead of hard-coding proxy-prefixed URLs in components.
 - Shared backend JSON persistence lives in `app/storage.py`; preserve typed `Decimal`, `date`, and `datetime` values by encoding them as `{"__type__": ..., "value": ...}` envelopes and always persist with same-directory temp-file replacement.
 - Shared backend write coordination also lives in `app/storage.py`; use `write_store`, `write_schedules`, or `write_json_file` so updates acquire the sibling `.lock` file and fail with `StorageLockTimeoutError` on deterministic timeout instead of adding feature-level locking.
+- Backend tests should share `FastAPI` app, `TestClient`, and disposable `StoragePaths` fixtures through `output/backend/tests/conftest.py` instead of recreating setup inline in each test module.
 
 ---
 ## 2026-03-12 20:33:22 CET - US-001
@@ -111,4 +112,13 @@ Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scri
   - Patterns discovered: Storage write coordination belongs inside `app.storage`, so later API and batch handlers should call the shared write helpers instead of managing lock files themselves.
   - Gotchas encountered: The contention test is easiest to make deterministic by pausing `Path.replace()` under `pytest.MonkeyPatch` rather than relying on timing-only thread races.
   - Useful context: A held lock now leaves the target `.lock` file in place and causes `write_json_file` to raise `StorageLockTimeoutError` after roughly one second, which future callers can surface or translate consistently.
+---
+## 2026-03-12 21:10:51 CET - US-012
+Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scripts/ralph/.codex-last-message-iter-10.txt
+- What was implemented: Added a shared backend `conftest.py` with reusable `FastAPI` app, `TestClient`, and disposable scaffold storage fixtures, then refactored the baseline import, health, and storage tests to consume those fixtures instead of duplicating setup inline.
+- Files changed: output/backend/tests/conftest.py, output/backend/tests/test_health.py, output/backend/tests/test_import.py, output/backend/tests/test_storage.py, scripts/ralph/prd.json, scripts/ralph/progress.txt
+- **Learnings for future iterations:**
+  - Patterns discovered: Put common backend test wiring in `output/backend/tests/conftest.py` so new tests can focus on behavior instead of rebuilding app clients or temp storage paths.
+  - Gotchas encountered: The Phase 0 acceptance check for this story is satisfied only when the existing baseline tests are refactored to consume the reusable fixtures, not just when `conftest.py` exists.
+  - Useful context: The `storage_paths` fixture yields isolated `store.json` and `schedules.json` targets under `tmp_path`, which keeps storage tests deterministic while reusing the scaffold path model.
 ---
