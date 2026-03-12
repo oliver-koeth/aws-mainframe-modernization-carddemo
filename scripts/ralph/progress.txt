@@ -2,6 +2,7 @@
 Started: Thu Mar 12 20:32:03 CET 2026
 ## Codebase Patterns
 - Keep all modernization scaffold artifacts under `output/`; do not place placeholder backend or frontend files elsewhere in the repository during Phase 0.
+- Keep the Phase 0 scope note in the root `README.md`, and state there that repository-level CI or task-runner wiring is deferred unless later slices need root commands to make the documented `output/` workflows runnable.
 - Run backend quality checks from `output/backend/`; the scaffold is packaged as `app` with editable-install tooling defined in `output/backend/pyproject.toml`.
 - On fresh machines, bootstrap backend checks with `python3 -m venv .venv` and `.venv/bin/pip install -e '.[dev]'`, then run smoke checks, pytest, and mypy through `.venv/bin/python`.
 - Run frontend quality checks from `output/frontend/`; keep Angular workspace metadata local to that directory and use `npm run typecheck` (`ngc -p tsconfig.app.json`) as the baseline scaffold validation before build-specific stories land.
@@ -169,4 +170,13 @@ Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scri
   - Patterns discovered: Frontend scaffold documentation should keep the default verification loop together in `output/frontend/README.md` with `npm run typecheck`, `npm run build`, and `npm run test:e2e` called from the workspace root.
   - Gotchas encountered: The local machine is currently running Node.js `v25.6.0`, so Angular and Playwright checks pass with a non-LTS warning even though the documented project baseline remains Node.js 20 LTS.
   - Useful context: `npm start -- --host 127.0.0.1 --port 4200` serves the placeholder route at `/jobs`, and `npm run test:e2e` still boots both frontend and backend automatically through Playwright's `webServer` configuration.
+---
+## 2026-03-12 21:45:40 CET - US-018
+Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scripts/ralph/.codex-last-message-iter-13.txt
+- What was implemented: Tightened the root Phase 0 scope note in `README.md` so it explicitly marks the modernization as scaffolding-only, points readers to `output/` as the generated workspace root, and states that repository-level CI or task-runner wiring is deferred unless later slices need it.
+- Files changed: README.md, scripts/ralph/.codex-last-message-iter-13.txt, scripts/ralph/prd.json, scripts/ralph/progress.txt
+- **Learnings for future iterations:**
+  - Patterns discovered: Root-level modernization guidance belongs in `README.md`, while implementation-specific commands stay in the `output/backend/` and `output/frontend/` workspace READMEs.
+  - Gotchas encountered: This documentation-only story still needs the established scaffold checks run end-to-end so the PRD's `Typecheck passes` acceptance remains grounded in real backend and frontend verification.
+  - Useful context: `.venv/bin/python -m mypy app`, `.venv/bin/python -m pytest`, `npm run typecheck`, `npm run build`, and `npm run test:e2e` all passed on March 12, 2026.
 ---

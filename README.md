@@ -47,7 +47,14 @@ The GNUCobol runtime also includes local init/reset scripts so the flat-file dat
 
 ## Phase 0 Modernization Scaffold
 
-Phase 0 of the Angular/FastAPI modernization is scaffolding only. The new workspace is rooted under `output/` so later slices can add backend, frontend, and docs artifacts without mixing placeholder modernization files into the existing CardDemo source tree.
+Phase 0 of the Angular/FastAPI modernization is scaffolding only. The generated
+workspace is rooted under `output/` so later slices can add backend, frontend,
+and docs artifacts without mixing placeholder modernization files into the
+existing CardDemo source tree.
+
+Root-level CI or task-runner wiring for the modernization scaffold is deferred
+unless a later slice needs repository-wide commands to make the documented
+`output/backend/` and `output/frontend/` workflows runnable.
 
 ## Technologies
 

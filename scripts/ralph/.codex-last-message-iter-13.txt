@@ -1,0 +1,1 @@
+Updated the root Phase 0 scaffold note in `README.md`, ran backend and frontend verification (`mypy`, `pytest`, Angular typecheck/build, and Playwright smoke tests), then marked `US-018` complete in `scripts/ralph/prd.json` and appended the Ralph progress log.
