@@ -1,0 +1,182 @@
+# Ralph Progress Log
+Started: Thu Mar 12 20:32:03 CET 2026
+## Codebase Patterns
+- Keep all modernization scaffold artifacts under `output/`; do not place placeholder backend or frontend files elsewhere in the repository during Phase 0.
+- Keep the Phase 0 scope note in the root `README.md`, and state there that repository-level CI or task-runner wiring is deferred unless later slices need root commands to make the documented `output/` workflows runnable.
+- Run backend quality checks from `output/backend/`; the scaffold is packaged as `app` with editable-install tooling defined in `output/backend/pyproject.toml`.
+- On fresh machines, bootstrap backend checks with `python3 -m venv .venv` and `.venv/bin/pip install -e '.[dev]'`, then run smoke checks, pytest, and mypy through `.venv/bin/python`.
+- Run frontend quality checks from `output/frontend/`; keep Angular workspace metadata local to that directory and use `npm run typecheck` (`ngc -p tsconfig.app.json`) as the baseline scaffold validation before build-specific stories land.
+- Frontend build verification should run as `npm run build` from `output/frontend/`; Angular CLI writes the distributable bundle to `dist/carddemo-frontend`.
+- The frontend shell uses standalone Angular bootstrapping: keep `src/main.ts` focused on `bootstrapApplication(AppComponent, { providers: [provideRouter(routes)] })`, with routes defined in `src/app/routes.ts`.
+- Browser verification for frontend scaffold stories can run against `npm start -- --host 127.0.0.1 --port 4200`; install Playwright's Chromium once with `npx playwright install chromium` if the local cache is empty.
+- Keep scaffold browser tests self-contained in `output/frontend/playwright.config.ts` by using a `webServer` array that starts both `../backend/.venv/bin/python -m uvicorn app.main:app` and `npm start -- --host 127.0.0.1 --port 4200` before Playwright hits the proxied Angular route.
+- When validating Angular proxy wiring in Playwright, fetch relative `'/api/...` endpoints inside `page.evaluate(...)` after loading a routed page so the test proves browser-context proxying and JSON parsing together.
+- Angular's Vite-based dev server proxy config should use `pathRewrite` in JSON proxy files; defining a raw `rewrite` object crashes request forwarding because Vite expects `rewrite` to be a function at runtime.
+- Frontend routes should consume backend data through `src/app/api-client.service.ts`; keep the shared `'/api'` base path in that service instead of hard-coding proxy-prefixed URLs in components.
+- Shared backend JSON persistence lives in `app/storage.py`; preserve typed `Decimal`, `date`, and `datetime` values by encoding them as `{"__type__": ..., "value": ...}` envelopes and always persist with same-directory temp-file replacement.
+- Shared backend write coordination also lives in `app/storage.py`; use `write_store`, `write_schedules`, or `write_json_file` so updates acquire the sibling `.lock` file and fail with `StorageLockTimeoutError` on deterministic timeout instead of adding feature-level locking.
+- Backend tests should share `FastAPI` app, `TestClient`, and disposable `StoragePaths` fixtures through `output/backend/tests/conftest.py` instead of recreating setup inline in each test module.
+
+---
+## 2026-03-12 20:33:22 CET - US-001
+Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scripts/ralph/.codex-last-message-iter-1.txt
+- What was implemented: Created the Phase 0 `output/` workspace root with backend, frontend, and docs directories plus placeholder backend/frontend READMEs and JSON storage files.
+- Files changed: README.md, output/backend/README.md, output/backend/store.json, output/backend/schedules.json, output/docs/.gitkeep, output/frontend/README.md, scripts/ralph/prd.json, scripts/ralph/progress.txt
+- **Learnings for future iterations:**
+  - Patterns discovered: Phase 0 scaffold work should be rooted entirely under `output/`, with the root README used for high-level phase notes.
+  - Gotchas encountered: This first story does not yet have project-local mypy/pytest/npm quality targets; only applicable validation was JSON syntax and patch hygiene.
+  - Useful context: `output/docs/` currently exists as an empty placeholder directory preserved via `.gitkeep`.
+---
+## 2026-03-12 20:41:32 CET - US-002
+Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scripts/ralph/.codex-last-message-iter-10.txt
+- What was implemented: Added the canonical FastAPI backend scaffold under `output/backend/` with a typed `app/` package, backend `pyproject.toml`, placeholder service/storage/job modules, and a minimal import test so the scaffold can be validated.
+- Files changed: output/backend/README.md, output/backend/app/__init__.py, output/backend/app/jobs.py, output/backend/app/main.py, output/backend/app/models.py, output/backend/app/scheduler.py, output/backend/app/services.py, output/backend/app/storage.py, output/backend/pyproject.toml, output/backend/tests/__init__.py, output/backend/tests/test_import.py, scripts/ralph/prd.json, scripts/ralph/progress.txt
+- **Learnings for future iterations:**
+  - Patterns discovered: Backend verification should use the `output/backend/` workspace directly, with `python -m mypy app`, `python -m pytest`, and editable installs driven by `pyproject.toml`.
+  - Gotchas encountered: A scaffold-only backend with zero tests causes `pytest` to exit with code 5, so even the earliest backend slice needs at least one discoverable smoke test.
+  - Useful context: `app.main` now exposes both `create_app()` and the module-level `app`, giving later API stories a stable entrypoint for imports and test clients.
+---
+## 2026-03-12 20:40:27 CET - US-003
+Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scripts/ralph/.codex-last-message-iter-1.txt
+- What was implemented: Added the `output/frontend/` Angular workspace scaffold with local package metadata, Angular CLI configuration, TypeScript configs, Playwright placeholder wiring, and minimal standalone bootstrap files for scaffold-only compilation.
+- Files changed: output/frontend/.gitignore, output/frontend/README.md, output/frontend/angular.json, output/frontend/package-lock.json, output/frontend/package.json, output/frontend/playwright.config.ts, output/frontend/public/.gitkeep, output/frontend/src/app/.gitkeep, output/frontend/src/index.html, output/frontend/src/main.ts, output/frontend/src/styles.css, output/frontend/tsconfig.app.json, output/frontend/tsconfig.json, scripts/ralph/prd.json, scripts/ralph/progress.txt
+- **Learnings for future iterations:**
+  - Patterns discovered: The frontend scaffold uses a standalone Angular bootstrap with a temporary inline root component so workspace compilation can pass before `app.component.ts` and routing are introduced.
+  - Gotchas encountered: Root-level `.gitignore` does not exclude frontend dependencies, so `output/frontend/.gitignore` needs to own `node_modules/` and build artifact ignores.
+  - Useful context: `angular.json` already defines the `carddemo-frontend` application and `serve` target, but `npm run build` is intentionally deferred to the later build-story iteration.
+---
+## 2026-03-12 20:43:04 CET - US-004
+Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scripts/ralph/.codex-last-message-iter-11.txt
+- What was implemented: Replaced the temporary inline bootstrap component with the scaffold's real standalone app shell files, adding `AppComponent`, `routes.ts`, and router-based application bootstrap wiring.
+- Files changed: output/frontend/package-lock.json, output/frontend/package.json, output/frontend/src/app/app.component.html, output/frontend/src/app/app.component.ts, output/frontend/src/app/routes.ts, output/frontend/src/main.ts, scripts/ralph/.codex-last-message-iter-11.txt, scripts/ralph/prd.json, scripts/ralph/progress.txt
+- **Learnings for future iterations:**
+  - Patterns discovered: Standalone Angular entrypoints in this scaffold should keep routes centralized in `src/app/routes.ts` and inject them through `provideRouter` during bootstrap.
+  - Gotchas encountered: Adding `RouterOutlet` to the shell also requires `@angular/router` in `output/frontend/package.json`; the workspace did not previously depend on it.
+  - Useful context: `npm run typecheck` from `output/frontend/` validates both the TypeScript and Angular template wiring for the shell files.
+---
+## 2026-03-12 20:47:06 CET - US-005
+Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scripts/ralph/.codex-last-message-iter-3.txt
+- What was implemented: Added a standalone jobs placeholder component, wired the Angular shell to redirect the root route to `/jobs`, and added a visible Jobs navigation link so the placeholder surface can be reached from the root layout.
+- Files changed: output/frontend/src/app/app.component.html, output/frontend/src/app/app.component.ts, output/frontend/src/app/jobs-placeholder.component.ts, output/frontend/src/app/routes.ts, scripts/ralph/prd.json, scripts/ralph/progress.txt
+- **Learnings for future iterations:**
+  - Patterns discovered: Placeholder frontend slices can expose the next insertion point cleanly by adding a standalone route component and using a root-path redirect in `src/app/routes.ts`.
+  - Gotchas encountered: Playwright browser verification failed initially until Chromium was installed locally with `npx playwright install chromium`.
+  - Useful context: Browser verification for this route used `npm start -- --host 127.0.0.1 --port 4200` plus a headless Playwright script that asserted navigation to `http://127.0.0.1:4200/jobs` and the placeholder text.
+---
+## 2026-03-12 20:51:48 CET - US-006
+Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scripts/ralph/.codex-last-message-iter-4.txt
+- What was implemented: Added an Angular dev-server proxy config that forwards browser requests from `/api/*` to the FastAPI backend on `127.0.0.1:8000`, wired the proxy into the `serve` target, and documented the exact paired backend/frontend local development commands and `/api` convention.
+- Files changed: output/backend/README.md, output/frontend/README.md, output/frontend/angular.json, output/frontend/proxy.conf.json, scripts/ralph/prd.json, scripts/ralph/progress.txt
+- **Learnings for future iterations:**
+  - Patterns discovered: Keep browser-facing frontend requests on the relative `/api` base path and let the Angular dev server strip the prefix before forwarding to FastAPI.
+  - Gotchas encountered: Angular's Vite proxy loader accepts `pathRewrite` in JSON, but a literal `rewrite` object causes runtime proxy crashes because Vite expects a callable rewrite hook.
+  - Useful context: Browser verification succeeded by opening `http://127.0.0.1:4200/jobs` and running `fetch('/api/openapi.json')` in page context, which returned the FastAPI OpenAPI document with title `CardDemo Backend`.
+---
+## 2026-03-12 20:56:00 CET - US-007
+Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scripts/ralph/.codex-last-message-iter-5.txt
+- What was implemented: Added the scaffold `GET /health` FastAPI endpoint returning a minimal JSON payload, documented it in the backend README, and added a backend test covering the response body and JSON content type.
+- Files changed: output/backend/README.md, output/backend/app/main.py, output/backend/tests/test_health.py, scripts/ralph/prd.json, scripts/ralph/progress.txt
+- **Learnings for future iterations:**
+  - Patterns discovered: Small scaffold endpoints should be added inside `create_app()` so both the module-level `app` and freshly created test instances share identical route wiring.
+  - Gotchas encountered: The local machine did not expose a `python` executable or backend dependencies globally, so backend acceptance checks had to run through `output/backend/.venv/bin/python`.
+  - Useful context: The health endpoint response contract is currently `{"status": "ok"}` with FastAPI's default `200 OK` JSON response semantics.
+---
+## 2026-03-12 20:56:16 CET - US-008
+Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scripts/ralph/.codex-last-message-iter-6.txt
+- What was implemented: Added the temporary scaffold `GET /jobs`, `GET /accounts`, and `GET /transactions` FastAPI collection endpoints, each returning an empty JSON array, and documented them as Phase 0-only contracts in the backend README.
+- Files changed: output/backend/README.md, output/backend/app/main.py, output/backend/tests/test_health.py, scripts/ralph/prd.json, scripts/ralph/progress.txt
+- **Learnings for future iterations:**
+  - Patterns discovered: Reuse a shared helper in `app.main` when multiple scaffold endpoints intentionally return the same placeholder JSON contract.
+  - Gotchas encountered: The acceptance checks still need to run through `output/backend/.venv/bin/python` on this machine because the project-local backend toolchain is not available via a global `python` command.
+  - Useful context: Placeholder collection coverage currently lives alongside the health endpoint smoke tests in `output/backend/tests/test_health.py`.
+---
+## 2026-03-12 21:00:27 CET - US-009
+Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scripts/ralph/.codex-last-message-iter-7.txt
+- What was implemented: Added a shared Angular `ApiClientService` rooted at `'/api'`, provided `HttpClient` during standalone bootstrap, and updated the jobs placeholder route to fetch the scaffold jobs collection through that shared client.
+- Files changed: output/frontend/README.md, output/frontend/src/app/api-client.service.ts, output/frontend/src/app/jobs-placeholder.component.ts, output/frontend/src/main.ts, scripts/ralph/prd.json, scripts/ralph/progress.txt
+- **Learnings for future iterations:**
+  - Patterns discovered: Keep proxy-aware backend calls centralized in `ApiClientService` so route components only ask for domain data and do not duplicate the `'/api'` prefix.
+  - Gotchas encountered: Frontend quality checks generate local `.angular/` and `out-tsc/` artifacts that should be cleaned before commit because they are not ignored by the repo root.
+  - Useful context: Browser verification for this story used the running backend on `127.0.0.1:8000`, the Angular dev server on `127.0.0.1:4200`, and a headless Playwright script that asserted the `/jobs` page rendered `Connected to /api/jobs` with a zero-length placeholder collection.
+---
+## 2026-03-12 21:04:00 CET - US-010
+Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scripts/ralph/.codex-last-message-iter-11.txt
+- What was implemented: Replaced the placeholder storage module with shared JSON read/write helpers for `store.json` and `schedules.json`, added typed serialization and deserialization for `Decimal`, `date`, and `datetime`, and wrote atomically through same-directory temp files plus rename replacement.
+- Files changed: output/backend/app/storage.py, output/backend/tests/test_storage.py, scripts/ralph/prd.json, scripts/ralph/progress.txt
+- **Learnings for future iterations:**
+  - Patterns discovered: Reuse `read_store`/`write_store` and `read_schedules`/`write_schedules` from `app.storage` instead of hand-rolling JSON access in later API or batch slices.
+  - Gotchas encountered: The storage API returns richer typed values than plain JSON, so backend type aliases must distinguish encoded `JsonValue` payloads from decoded `StorageValue` results to keep `mypy --strict` green.
+  - Useful context: Atomic writes currently create hidden `.<filename>.*.tmp` files inside the target directory and immediately replace the destination file, leaving no temp artifacts behind after a successful write.
+---
+## 2026-03-12 21:07:10 CET - US-011
+Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scripts/ralph/.codex-last-message-iter-12.txt
+- What was implemented: Added centralized storage write locking in `app.storage` using sibling `.lock` files with deterministic timeout failures, documented the shared locking strategy, and extended backend storage tests with concurrent-write serialization and lock-timeout coverage.
+- Files changed: output/backend/README.md, output/backend/app/storage.py, output/backend/tests/test_storage.py, scripts/ralph/.codex-last-message-iter-12.txt, scripts/ralph/prd.json, scripts/ralph/progress.txt
+- **Learnings for future iterations:**
+  - Patterns discovered: Storage write coordination belongs inside `app.storage`, so later API and batch handlers should call the shared write helpers instead of managing lock files themselves.
+  - Gotchas encountered: The contention test is easiest to make deterministic by pausing `Path.replace()` under `pytest.MonkeyPatch` rather than relying on timing-only thread races.
+  - Useful context: A held lock now leaves the target `.lock` file in place and causes `write_json_file` to raise `StorageLockTimeoutError` after roughly one second, which future callers can surface or translate consistently.
+---
+## 2026-03-12 21:10:51 CET - US-012
+Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scripts/ralph/.codex-last-message-iter-10.txt
+- What was implemented: Added a shared backend `conftest.py` with reusable `FastAPI` app, `TestClient`, and disposable scaffold storage fixtures, then refactored the baseline import, health, and storage tests to consume those fixtures instead of duplicating setup inline.
+- Files changed: output/backend/tests/conftest.py, output/backend/tests/test_health.py, output/backend/tests/test_import.py, output/backend/tests/test_storage.py, scripts/ralph/prd.json, scripts/ralph/progress.txt
+- **Learnings for future iterations:**
+  - Patterns discovered: Put common backend test wiring in `output/backend/tests/conftest.py` so new tests can focus on behavior instead of rebuilding app clients or temp storage paths.
+  - Gotchas encountered: The Phase 0 acceptance check for this story is satisfied only when the existing baseline tests are refactored to consume the reusable fixtures, not just when `conftest.py` exists.
+  - Useful context: The `storage_paths` fixture yields isolated `store.json` and `schedules.json` targets under `tmp_path`, which keeps storage tests deterministic while reusing the scaffold path model.
+---
+## 2026-03-12 21:13:20 CET - US-013
+Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scripts/ralph/.codex-last-message-iter-1.txt
+- What was implemented: Added the canonical `npm run build` frontend verification command on top of the existing Angular build target and documented the build workflow in the frontend README for local and CI use.
+- Files changed: output/frontend/README.md, output/frontend/package.json, scripts/ralph/prd.json, scripts/ralph/progress.txt
+- **Learnings for future iterations:**
+  - Patterns discovered: The Angular workspace already exposes its application build target through `angular.json`, so package-level verification commands should wrap that target instead of duplicating builder configuration elsewhere.
+  - Gotchas encountered: Local frontend build and typecheck runs generate transient `.angular/` and `out-tsc/` directories; keep them out of commits when validating stories locally.
+  - Useful context: `npm run build` completed successfully on March 12, 2026 and emitted the scaffold bundle under `output/frontend/dist/carddemo-frontend`.
+---
+## 2026-03-12 21:35:20 CET - US-014
+Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scripts/ralph/.codex-last-message-iter-9.txt
+- What was implemented: Added a Playwright smoke-test harness under `output/frontend/` with a baseline `e2e/smoke.spec.ts`, wired `npm run test:e2e`, and configured Playwright to boot the scaffold backend and Angular dev server together before checking the `/jobs` route.
+- Files changed: output/frontend/README.md, output/frontend/e2e/smoke.spec.ts, output/frontend/package.json, output/frontend/playwright.config.ts, scripts/ralph/prd.json, scripts/ralph/progress.txt
+- **Learnings for future iterations:**
+  - Patterns discovered: Frontend smoke coverage should target routed scaffold pages such as `/jobs` and let the Angular proxy exercise backend connectivity instead of calling backend origins directly from Playwright.
+  - Gotchas encountered: The backend side of Playwright startup must use `output/backend/.venv/bin/python` on this machine because there is no guaranteed global `python` executable with project dependencies installed.
+  - Useful context: `npm run test:e2e` passed on March 12, 2026 with Playwright starting both servers automatically and asserting the active Jobs nav plus the placeholder API status copy.
+---
+## 2026-03-12 21:38:07 CET - US-015
+Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scripts/ralph/.codex-last-message-iter-1.txt
+- What was implemented: Extended the Playwright smoke suite so a browser session on `/jobs` fetches `/api/jobs`, `/api/accounts`, and `/api/transactions` through the Angular proxy, then verifies each response parses as an empty JSON array with an `application/json` content type.
+- Files changed: output/frontend/e2e/smoke.spec.ts, scripts/ralph/prd.json, scripts/ralph/progress.txt
+- **Learnings for future iterations:**
+  - Patterns discovered: Relative `fetch('/api/...')` calls inside `page.evaluate(...)` are the simplest way to prove proxy-backed scaffold endpoints work from real frontend context.
+  - Gotchas encountered: Keeping the new endpoint checks in the existing `/jobs` smoke flow avoids adding extra routing or server boot complexity while still satisfying browser verification.
+  - Useful context: `npm run typecheck` and `npm run test:e2e` both passed on March 12, 2026 for this story, with Playwright running two smoke tests against the paired backend/frontend servers.
+---
+## 2026-03-12 21:40:49 CET - US-016
+Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scripts/ralph/.codex-last-message-iter-12.txt
+- What was implemented: Expanded the backend scaffold README to document the Python 3.12 setup flow, the canonical startup/typecheck/test commands, the roles of `store.json` and `schedules.json`, and the Phase 0 placeholder endpoint contract.
+- Files changed: output/backend/README.md, scripts/ralph/prd.json, scripts/ralph/progress.txt
+- **Learnings for future iterations:**
+  - Patterns discovered: Backend documentation in this scaffold should point to the project-local `.venv/bin/python` commands so startup, pytest, and mypy use the same editable install.
+  - Gotchas encountered: The README acceptance for backend conventions is not satisfied by startup notes alone; it also needs explicit storage-file purpose and a reminder that `/jobs`, `/accounts`, and `/transactions` are temporary scaffold endpoints.
+  - Useful context: `.venv/bin/python -m mypy app`, `.venv/bin/python -m pytest`, and `.venv/bin/python -c "import app.main"` all passed from `output/backend/` on March 12, 2026.
+---
+## 2026-03-12 21:43:30 CET - US-017
+Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scripts/ralph/.codex-last-message-iter-12.txt
+- What was implemented: Expanded the frontend scaffold README to document the Node.js 20 LTS and npm workspace defaults, the canonical startup/typecheck/build/Playwright commands, the shared `'/api'` proxy strategy, and how to open the `/jobs` placeholder route during local development.
+- Files changed: output/frontend/README.md, scripts/ralph/prd.json, scripts/ralph/progress.txt
+- **Learnings for future iterations:**
+  - Patterns discovered: Frontend scaffold documentation should keep the default verification loop together in `output/frontend/README.md` with `npm run typecheck`, `npm run build`, and `npm run test:e2e` called from the workspace root.
+  - Gotchas encountered: The local machine is currently running Node.js `v25.6.0`, so Angular and Playwright checks pass with a non-LTS warning even though the documented project baseline remains Node.js 20 LTS.
+  - Useful context: `npm start -- --host 127.0.0.1 --port 4200` serves the placeholder route at `/jobs`, and `npm run test:e2e` still boots both frontend and backend automatically through Playwright's `webServer` configuration.
+---
+## 2026-03-12 21:45:40 CET - US-018
+Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scripts/ralph/.codex-last-message-iter-13.txt
+- What was implemented: Tightened the root Phase 0 scope note in `README.md` so it explicitly marks the modernization as scaffolding-only, points readers to `output/` as the generated workspace root, and states that repository-level CI or task-runner wiring is deferred unless later slices need it.
+- Files changed: README.md, scripts/ralph/.codex-last-message-iter-13.txt, scripts/ralph/prd.json, scripts/ralph/progress.txt
+- **Learnings for future iterations:**
+  - Patterns discovered: Root-level modernization guidance belongs in `README.md`, while implementation-specific commands stay in the `output/backend/` and `output/frontend/` workspace READMEs.
+  - Gotchas encountered: This documentation-only story still needs the established scaffold checks run end-to-end so the PRD's `Typecheck passes` acceptance remains grounded in real backend and frontend verification.
+  - Useful context: `.venv/bin/python -m mypy app`, `.venv/bin/python -m pytest`, `npm run typecheck`, `npm run build`, and `npm run test:e2e` all passed on March 12, 2026.
+---

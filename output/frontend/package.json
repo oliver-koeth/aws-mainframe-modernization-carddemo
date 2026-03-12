@@ -1,0 +1,32 @@
+{
+  "name": "carddemo-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Phase 0 Angular scaffold for the CardDemo modernization frontend.",
+  "scripts": {
+    "build": "ng build",
+    "start": "ng serve",
+    "test:e2e": "playwright test",
+    "typecheck": "ngc -p tsconfig.app.json"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  },
+  "dependencies": {
+    "@angular/common": "^21.2.4",
+    "@angular/core": "^21.2.4",
+    "@angular/platform-browser": "^21.2.4",
+    "@angular/router": "^21.2.4",
+    "rxjs": "^7.8.2",
+    "zone.js": "^0.15.1"
+  },
+  "devDependencies": {
+    "@angular/build": "^21.2.2",
+    "@angular/cli": "^21.2.2",
+    "@angular/compiler-cli": "^21.2.4",
+    "@playwright/test": "^1.52.0",
+    "@types/node": "^24.6.0",
+    "typescript": "^5.9.3"
+  }
+}

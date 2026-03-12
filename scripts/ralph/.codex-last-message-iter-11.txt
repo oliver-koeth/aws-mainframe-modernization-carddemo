@@ -1,0 +1,7 @@
+Implemented US-004 by replacing the inline scaffold bootstrap with the real standalone Angular shell under `output/frontend/src/app/`.
+
+- Added `AppComponent` with external HTML template and router outlet.
+- Added `routes.ts` as the standalone routing entrypoint.
+- Updated `src/main.ts` to bootstrap `AppComponent` with `provideRouter(routes)`.
+- Added `@angular/router` to the frontend workspace dependencies.
+- Verified the shell with `npm run typecheck` from `output/frontend/`.
