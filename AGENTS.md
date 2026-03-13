@@ -144,6 +144,7 @@ If a story changes API or persistence behavior, include automated tests.
 - Update docs when behavior, commands, or scope assumptions change.
 - Keep Phase 0 docs honest: scaffolding only, not feature-complete migration.
 - Prefer concise operational documentation over long narrative descriptions.
+- Keep `output/docs/record-layouts.md` as the consolidated Phase 1 record-to-model index; retain narrower `output/docs/*-records.md` documents for field-level details rather than duplicating those tables everywhere.
 
 ## When To Pause And Ask
 

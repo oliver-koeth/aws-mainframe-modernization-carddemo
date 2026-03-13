@@ -7,6 +7,7 @@
 - Display-form `PIC S9(...)V99` flat-file amounts use a trailing overpunch character for both sign and final digit; decode that suffix before normalizing account or transaction money fields to `Decimal`.
 - Transaction reference joins are composite: `CVTRA04Y` categories key on `transaction_type_code` + `transaction_category_code`, `CVTRA03Y` supplies the type lookup, `CVTRA01Y` category balances attach that pair to `account_id`, and `CVTRA02Y` disclosure groups attach the same pair to `account_group_id`.
 - `tranrept_requests.txt` is a runtime-managed pipe-delimited log written by `CORPT00C`, not a fixed-width copybook file; parse it as `timestamp|user_id|report_name|start_date|end_date` and only expect `Monthly`, `Yearly`, or `Custom` report names.
+- Keep `output/docs/record-layouts.md` as the top-level Phase 1 record-layout index and use the narrower `output/docs/*-records.md` files for detailed field mappings; update both layers only when the underlying source semantics change.
 
 Started: Fri Mar 13 13:10:05 CET 2026
 ---
@@ -89,4 +90,16 @@ Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scri
   - `CVTRA05Y` and `CVTRA06Y` share the same 350-byte transaction layout, but the flat-file runtime operationally uses `app/data/ASCII/dailytran.txt`; later import work should treat that runtime file as the authoritative event source.
   - Seed transaction amounts use the same overpunch suffix rules as account and reference balances, and timestamp fields are stored as timezone-free ISO text with microseconds when present.
   - `CORPT00C` writes report-request timestamps as second-resolution `YYYY-MM-DD HH:MM:SS` text, while `dateparm.txt` stores the active date range separately for batch reporting.
+---
+## 2026-03-13 16:21:47 CET - US-008
+Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scripts/ralph/.codex-last-message-iter-7.txt
+- Added `output/docs/record-layouts.md` as the consolidated Phase 1 record-layout reference, mapping each modeled entity from copybook or runtime file to store collection, canonical model, logical width or runtime format, and key join fields.
+- Documented the shared parsing conventions, deterministic malformed-line handling, supported code restrictions, and explicitly deferred JSON-only contracts for `CVTRA07Y` report output and job telemetry.
+- Added a reusable documentation rule in `AGENTS.md` so future iterations keep the new record-layout index as the top-level reference while preserving the existing per-record family docs for field-level detail.
+- Verified backend quality gates with `.venv/bin/python -c "import app.main"`, `.venv/bin/python -m mypy app`, and `.venv/bin/python -m pytest` from `output/backend`.
+- Files changed: `AGENTS.md`, `output/docs/record-layouts.md`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - Use `output/docs/record-layouts.md` for cross-entity traceability and relationship summaries; keep deeper field-by-field rules in the record-family documents so later stories can update one summary table without duplicating every field table.
+  - Explicitly call out JSON-only operational contracts like job telemetry alongside copybook-backed entities, because they are part of the Phase 1 store contract even without a legacy flat-file source.
+  - Deferred copybook layouts such as `CVTRA07Y` should stay visible in the consolidated documentation instead of disappearing until a parser or renderer is implemented.
 ---
