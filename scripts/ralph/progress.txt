@@ -6,6 +6,7 @@
 - Preserve leading-zero numeric identifiers from copybooks, such as customer IDs and SSNs, as strings in canonical JSON models unless the runtime semantics require arithmetic.
 - Display-form `PIC S9(...)V99` flat-file amounts use a trailing overpunch character for both sign and final digit; decode that suffix before normalizing account or transaction money fields to `Decimal`.
 - Transaction reference joins are composite: `CVTRA04Y` categories key on `transaction_type_code` + `transaction_category_code`, `CVTRA03Y` supplies the type lookup, `CVTRA01Y` category balances attach that pair to `account_id`, and `CVTRA02Y` disclosure groups attach the same pair to `account_group_id`.
+- `tranrept_requests.txt` is a runtime-managed pipe-delimited log written by `CORPT00C`, not a fixed-width copybook file; parse it as `timestamp|user_id|report_name|start_date|end_date` and only expect `Monthly`, `Yearly`, or `Custom` report names.
 
 Started: Fri Mar 13 13:10:05 CET 2026
 ---
@@ -77,4 +78,15 @@ Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scri
   - `CVTRA01Y` and `CVTRA02Y` both store signed zoned-decimal amounts with two fractional digits even though their field widths differ (`11` for category balances, `6` for disclosure-group rates).
   - `CBACT04C` resolves disclosure-group interest by `AccountRecord.group_id` plus transaction type/category, not by account ID, so later import and service code should preserve the account group string exactly.
   - `CBTRN03C` treats `trancatg.txt` keys as the six-character concatenation of transaction type and category code; later lookup services should preserve that composite-key semantics instead of inventing surrogate IDs.
+---
+## 2026-03-13 16:18:04 CET - US-007
+Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scripts/ralph/.codex-last-message-iter-6.txt
+- Added canonical Phase 1 transaction-activity models for `CVTRA05Y` and `CVTRA06Y`, plus a `CVTRA07Y` report-detail projection and JSON persistence models for job runs and job-run details.
+- Added deterministic parsers for `dailytran.txt` transaction rows and `tranrept_requests.txt` report-request lines, including signed-overpunch money decoding, ISO timestamp parsing, and validation of supported report names.
+- Documented the transaction activity contracts and JSON serialization rules in a dedicated reference, and verified backend quality gates with `.venv/bin/python -c "import app.main"`, `.venv/bin/python -m mypy app`, and `.venv/bin/python -m pytest` from `output/backend`.
+- Files changed: `AGENTS.md`, `output/backend/app/domain/__init__.py`, `output/backend/app/domain/transactions_activity.py`, `output/backend/tests/test_transaction_activity.py`, `output/docs/transaction-activity-records.md`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - `CVTRA05Y` and `CVTRA06Y` share the same 350-byte transaction layout, but the flat-file runtime operationally uses `app/data/ASCII/dailytran.txt`; later import work should treat that runtime file as the authoritative event source.
+  - Seed transaction amounts use the same overpunch suffix rules as account and reference balances, and timestamp fields are stored as timezone-free ISO text with microseconds when present.
+  - `CORPT00C` writes report-request timestamps as second-resolution `YYYY-MM-DD HH:MM:SS` text, while `dateparm.txt` stores the active date range separately for batch reporting.
 ---
