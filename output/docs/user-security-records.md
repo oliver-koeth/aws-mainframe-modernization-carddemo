@@ -21,4 +21,8 @@
 
 - Presence of a row means the user is active. The flat-file runtime does not encode a separate inactive or locked status; deleting a user removes the row.
 - `COSGN00C` uppercases sign-on input before comparison, and `GCUSRSEC` uppercases passwords and user-type input before writing records. Phase 1 parsing preserves stored values as written rather than re-normalizing them.
+- `COSGN00C` authenticates by scanning `usrsec.dat` until it finds a row whose `SEC-USR-ID` equals the uppercased input user ID and whose uppercased stored password equals the uppercased input password.
+- On successful sign-on, `COSGN00C` moves `SEC-USR-TYPE` into `CDEMO-USER-TYPE` and routes admins to `COADM01C` while regular users continue to `COMEN01C`; Phase 1 `AuthenticationService` reuses that same user-type resolution and can optionally require a specific role for callers that need admin-only access.
+- `GCUSRSEC` rejects blank user IDs, blank first names, blank last names, blank passwords, and user types outside `A` or `U`.
+- Durable session issuance is not described by `COSGN00C` or `GCUSRSEC`; the modernization backend therefore treats `operations.sessions` as a lookup-only JSON contract and defers session creation semantics to a later API slice.
 - Unsupported user-type values are treated as deterministic parse failures instead of being coerced to a fallback role.

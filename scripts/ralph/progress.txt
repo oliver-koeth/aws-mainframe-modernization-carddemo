@@ -4,6 +4,7 @@
 - Runtime-managed imports still belong in `output/backend/app/seed_import.py`: read copybook-backed seed families from `app/data/ASCII.seed`, but source `tranrept_requests.txt` from `app/data/ASCII` and normalize a missing runtime log to an empty `report_requests` collection.
 - The authoritative `store.json` root contract lives in `output/backend/app/models.py` `default_store_document()` and is enforced by `output/backend/app/storage.py`; future stories should add fields inside declared collections or bump schema version intentionally instead of reshaping the root object ad hoc.
 - Keep `output/backend/app/models.py` `STORE_COLLECTION_NAMES` and `STORE_OPERATION_COLLECTION_NAMES` aligned with `default_store_document()` whenever `store.json` collections change; storage validation and bootstrap contract tests consume those constants as the canonical collection list.
+- Storage-backed domain services should read raw collections through `app.storage.read_store()` and validate persisted rows into canonical Pydantic models at the service boundary before applying business logic; treat malformed persisted rows as deterministic consistency errors instead of passing untyped dicts deeper into services.
 - Copybook-backed parsers under `output/backend/app/domain` should reuse `output/backend/app/fixed_width.py` for width validation, field slicing, text normalization, and signed-zoned-decimal decoding; keep record-family modules focused on field mapping and domain-specific code validation.
 - Seed/bootstrap commands should run file rows through `output/backend/app/importing.py` `parse_lines_strict()` so malformed data hard-fails consistently with `SeedImportError.detail` (`source_name`, `line_number`, `raw_line`, `reason`) instead of inventing per-file quarantine formats.
 - Extend Phase 1 seed bootstrap through `output/backend/app/seed_import.py` `SEED_SOURCES` and `bootstrap_store()` so every new imported record family shares the same CLI entry point, default repo seed directory, and `write_store()` persistence path.
@@ -192,4 +193,17 @@ Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scri
   - Keep baseline seed-count assertions in one helper so relationship-focused tests can reuse the same expected totals without reintroducing scattered magic numbers.
   - Treat the CLI count summary from `app.seed_import.summarize_store_counts()` as a lightweight snapshot contract; it catches fixture drift without persisting a second golden file.
   - When shipped seed files change intentionally, update both the README baseline section and the centralized test constant in the same commit so documentation and CI stay in sync.
+---
+## 2026-03-13 17:29:16 CET - US-016
+Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scripts/ralph/.codex-last-message-iter-5.txt
+- Added `output/backend/app/domain/auth.py` with a storage-backed `AuthenticationService` that mirrors `COSGN00C` sign-on semantics for uppercased credential comparison, shared invalid-credential handling, role resolution, and optional role-based authorization.
+- Added a lookup-only session contract over `operations.sessions`, plus deterministic consistency errors when stored session rows or referenced user rows are malformed.
+- Documented the Phase 1 auth/session boundary in backend and user-security docs, including the authoritative limitation that `CSUSR01Y` has no disabled flag and COBOL COMMAREA flow does not define durable session issuance.
+- Added pytest coverage for valid sign-on, invalid credentials, authorization failure, successful session lookup, and dangling-session failure cases.
+- Verified `.venv/bin/python -c "import app.main"`, `.venv/bin/python -m mypy app`, and `.venv/bin/python -m pytest` from `output/backend`.
+- Files changed: `AGENTS.md`, `output/backend/README.md`, `output/backend/app/domain/__init__.py`, `output/backend/app/domain/auth.py`, `output/backend/app/services.py`, `output/backend/tests/test_auth.py`, `output/docs/user-security-records.md`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - When a service consumes persisted Phase 1 collections, validate each raw row into the canonical Pydantic model before applying joins or auth logic; that keeps corrupted `store.json` data on one deterministic error path.
+  - `COSGN00C` gives one shared sign-on failure path for both unknown user IDs and wrong passwords, so later session/API slices should avoid leaking which half of the credential pair failed.
+  - Durable session creation is still deferred: Phase 1 can resolve pre-existing `operations.sessions` rows, but later API work will need to define how a successful sign-on writes that collection because the GNUCobol flow only carries session-like state in COMMAREA.
 ---

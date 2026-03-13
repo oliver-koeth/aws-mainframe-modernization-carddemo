@@ -84,6 +84,37 @@ Schedule declarations live in `schedules.json`. Future scheduler and batch stori
 
 Shared JSON writes go through `app.storage`, which serializes updates with a same-directory `.lock` file per target JSON document before performing a temp-file-plus-rename replacement. Future API and batch code should keep using `write_store`, `write_schedules`, or `write_json_file` directly instead of implementing ad hoc write locks at call sites.
 
+## Authentication And Session Lookup
+
+Phase 1 now includes a framework-agnostic authentication service under `app.domain.auth`, built from the authoritative GNUCobol sign-on program `app/cbl/COSGN00C.cbl` plus the user-maintenance persistence rules in `app/cbl/GCUSRSEC.cbl`.
+
+The shared `AuthenticationService.authenticate()` contract follows the COBOL behavior directly:
+
+- upper-case the provided `user_id` and `password` before comparison
+- compare against imported `users[]` records without exposing whether the user ID or password was wrong
+- resolve the authenticated role from `CSUSR01Y` `user_type_code` (`A` -> `admin`, `U` -> `user`)
+- optionally enforce a required role and fail with an authorization error when credentials are valid but the resolved user type is not allowed
+
+`GCUSRSEC` upper-cases user IDs, passwords, and user-type input before persisting records, so the Phase 1 service assumes imported `users[]` data already reflects those write-time semantics. First and last names remain stored as entered.
+
+The authoritative flat-file user record does not contain a disabled or locked status. Because neither `CSUSR01Y`, `COSGN00C`, nor `GCUSRSEC` exposes that state, Phase 1 authentication supports only:
+
+- successful sign-on
+- invalid credentials
+- authorization failures based on the resolved `A`/`U` user type
+
+Phase 1 also defines `AuthenticationService.lookup_session()` over `operations.sessions`, but this is intentionally a lookup-only contract. The GNUCobol runtime carries interactive state in COMMAREA fields rather than a durable session file, so current modernization code resolves previously persisted session rows without inventing a COBOL-backed session-creation workflow yet. The minimal persisted session contract is:
+
+```json
+{
+  "session_id": "string",
+  "user_id": "string",
+  "created_at": "optional ISO-8601 datetime"
+}
+```
+
+Session lookup joins that record back to the canonical `users[]` collection and raises a deterministic consistency error if a stored session references a missing user.
+
 ## Seed Import Error Handling
 
 Phase 1 uses a strict malformed-line strategy for bootstrap work. Import code should route source rows through `app.importing.parse_lines_strict`, which calls the record-family parser for each line and hard-fails on the first malformed row.

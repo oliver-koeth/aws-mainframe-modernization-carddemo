@@ -1,5 +1,16 @@
 """Domain models and parsers for Phase 1 modernization artifacts."""
 
+from .auth import (
+    AuthenticatedUser,
+    AuthenticationService,
+    InvalidCredentialsError,
+    ResolvedSession,
+    SessionLookupError,
+    SessionNotFoundError,
+    SessionRecord,
+    SessionStoreConsistencyError,
+    UnauthorizedUserError,
+)
 from .accounts import (
     ACCOUNT_RECORD_WIDTH,
     CARD_ACCOUNT_XREF_RECORD_WIDTH,
@@ -65,6 +76,15 @@ from .users import (
 )
 
 __all__ = [
+    "AuthenticatedUser",
+    "AuthenticationService",
+    "InvalidCredentialsError",
+    "ResolvedSession",
+    "SessionLookupError",
+    "SessionNotFoundError",
+    "SessionRecord",
+    "SessionStoreConsistencyError",
+    "UnauthorizedUserError",
     "ACCOUNT_RECORD_WIDTH",
     "CARD_ACCOUNT_XREF_RECORD_WIDTH",
     "CARD_RECORD_WIDTH",
