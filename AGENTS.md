@@ -120,6 +120,7 @@ If a story changes API or persistence behavior, include automated tests.
 ## Data And Persistence Rules
 
 - Preserve COBOL record semantics even when migrating storage to JSON.
+- Preserve leading-zero numeric identifiers from copybooks, such as customer IDs and SSNs, as strings in JSON models unless the runtime semantics require arithmetic.
 - Money should remain precise end-to-end; avoid float-based persistence logic.
 - JSON persistence must support `Decimal`, `date`, and `datetime`.
 - Treat flat files written with GNUCobol `LINE SEQUENTIAL` semantics as logically copybook-width records even when trailing spaces are omitted on disk; right-pad to the authoritative copybook width before slicing fields, then fail deterministically only when required fields are truncated, blank, or invalid.

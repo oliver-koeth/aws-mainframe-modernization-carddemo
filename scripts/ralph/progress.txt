@@ -3,6 +3,7 @@
 - For flat-file modernization stories, document both `app/data/ASCII.seed` bootstrap sources and `app/data/ASCII` runtime-managed files; `init_gnucobol_data.sh` and `reset_gnucobol_data.sh` create or reset operational files like `dateparm.txt`, `dailytran_pending.txt`, and `tranrept_requests.txt` even when those files do not have seed counterparts.
 - The authoritative `store.json` root contract lives in `output/backend/app/models.py` `default_store_document()` and is enforced by `output/backend/app/storage.py`; future stories should add fields inside declared collections or bump schema version intentionally instead of reshaping the root object ad hoc.
 - GNUCobol `LINE SEQUENTIAL` flat files can be physically shorter than their copybook width because trailing spaces are dropped on disk; parsers should right-pad to the logical copybook width before field slicing and then validate required fields explicitly.
+- Preserve leading-zero numeric identifiers from copybooks, such as customer IDs and SSNs, as strings in canonical JSON models unless the runtime semantics require arithmetic.
 
 Started: Fri Mar 13 13:10:05 CET 2026
 ---
@@ -39,4 +40,15 @@ Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scri
   - `GCUSRSEC` is the authoritative source for user-record validation semantics: blank first name, last name, password, or user ID should be rejected, and `SEC-USR-TYPE` only supports `A` and `U`.
   - User status is implicit in the flat-file runtime; a user is active when a row exists, and deletion removes the row instead of flipping a status flag.
   - Keep copybook code values alongside normalized JSON enums when modeling legacy records so later services can preserve COBOL-facing semantics without reintroducing raw parsing logic.
+---
+## 2026-03-13 15:57:51 CET - US-004
+Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scripts/ralph/.codex-last-message-iter-3.txt
+- Added a canonical Phase 1 customer domain module with nested Pydantic models for `CVCUS01Y`, including normalized name, address, and contact structures plus deterministic parsing for dates, digit-only identifiers, and primary-card-holder flags.
+- Added parser tests for a shipped seed row, normalization of optional blank fields, and malformed customer lines covering invalid dates, non-digit identifiers, blank required fields, unsupported indicators, and oversized records.
+- Documented the `CVCUS01Y` record layout, blank-field handling, date semantics, and leading-zero identifier preservation in a dedicated customer-records reference.
+- Files changed: `AGENTS.md`, `output/backend/app/domain/__init__.py`, `output/backend/app/domain/customers.py`, `output/backend/tests/test_customers.py`, `output/docs/customer-records.md`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - `CVCUS01Y` customer records use a 500-byte logical layout, but `custdata.txt` seed/runtime lines are shorter on disk because trailing filler is omitted; customer parsers must right-pad before slicing fields.
+  - Preserve customer IDs and SSNs as strings even though the copybook uses numeric PIC clauses, otherwise later JSON serialization loses leading zeros that the COBOL runtime treats as significant.
+  - `CUST-PRI-CARD-HOLDER-IND` is the only explicit customer-status-like flag present in `CVCUS01Y`; unsupported values should fail deterministically instead of being coerced.
 ---
