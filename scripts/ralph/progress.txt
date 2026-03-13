@@ -2,6 +2,7 @@
 ## Codebase Patterns
 - For flat-file modernization stories, document both `app/data/ASCII.seed` bootstrap sources and `app/data/ASCII` runtime-managed files; `init_gnucobol_data.sh` and `reset_gnucobol_data.sh` create or reset operational files like `dateparm.txt`, `dailytran_pending.txt`, and `tranrept_requests.txt` even when those files do not have seed counterparts.
 - The authoritative `store.json` root contract lives in `output/backend/app/models.py` `default_store_document()` and is enforced by `output/backend/app/storage.py`; future stories should add fields inside declared collections or bump schema version intentionally instead of reshaping the root object ad hoc.
+- GNUCobol `LINE SEQUENTIAL` flat files can be physically shorter than their copybook width because trailing spaces are dropped on disk; parsers should right-pad to the logical copybook width before field slicing and then validate required fields explicitly.
 
 Started: Fri Mar 13 13:10:05 CET 2026
 ---
@@ -27,4 +28,15 @@ Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scri
   - Store bootstrap and service code should go through `read_store` and `write_store` so schema validation, missing-file defaults, and typed JSON handling remain centralized.
   - Reserve future non-seed runtime state under `operations.*`; business entity collections stay top-level and always exist even before import stories populate them.
   - Unsupported store versions should fail fast rather than attempting implicit coercion; later migration work needs an explicit transform step if schema versions diverge.
+---
+## 2026-03-13 15:52:24 CET - US-003
+Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scripts/ralph/.codex-last-message-iter-2.txt
+- Added a canonical Phase 1 user-security domain module with Pydantic models for `CSUSR01Y`, including normalized `name` and `role` semantics plus deterministic parse errors for blank required fields, unsupported user types, and oversized lines.
+- Added parser tests covering valid seed rows, optional filler normalization, unsupported role codes, truncated records, and malformed record width handling.
+- Documented the `CSUSR01Y` field mapping and runtime behavior, including the fact that `usrsec.dat` may be shorter than 80 bytes on disk because GNUCobol line-sequential writes omit trailing spaces.
+- Files changed: `AGENTS.md`, `output/backend/app/domain/__init__.py`, `output/backend/app/domain/users.py`, `output/backend/tests/test_user_security.py`, `output/docs/user-security-records.md`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - `GCUSRSEC` is the authoritative source for user-record validation semantics: blank first name, last name, password, or user ID should be rejected, and `SEC-USR-TYPE` only supports `A` and `U`.
+  - User status is implicit in the flat-file runtime; a user is active when a row exists, and deletion removes the row instead of flipping a status flag.
+  - Keep copybook code values alongside normalized JSON enums when modeling legacy records so later services can preserve COBOL-facing semantics without reintroducing raw parsing logic.
 ---
