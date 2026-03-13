@@ -1,6 +1,7 @@
 # Ralph Progress Log
 ## Codebase Patterns
 - For flat-file modernization stories, document both `app/data/ASCII.seed` bootstrap sources and `app/data/ASCII` runtime-managed files; `init_gnucobol_data.sh` and `reset_gnucobol_data.sh` create or reset operational files like `dateparm.txt`, `dailytran_pending.txt`, and `tranrept_requests.txt` even when those files do not have seed counterparts.
+- The authoritative `store.json` root contract lives in `output/backend/app/models.py` `default_store_document()` and is enforced by `output/backend/app/storage.py`; future stories should add fields inside declared collections or bump schema version intentionally instead of reshaping the root object ad hoc.
 
 Started: Fri Mar 13 13:10:05 CET 2026
 ---
@@ -15,4 +16,15 @@ Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scri
   - The flat-file runtime uses `dailytran.txt` in place of the original online VSAM transaction store, so Phase 1 docs should describe runtime semantics separately from mainframe dataset names.
   - `CVTRA07Y.cpy` exists as an authoritative report-layout copybook even though there is no current `COPY CVTRA07Y` consumer in `app/cbl`; future modeling work should carry it as a documented reference rather than inventing a missing runtime file.
   - Report-request behavior is split between `CORPT00C.cbl` and runtime-managed files in `app/data/ASCII`, so later importer stories must account for empty-by-default `tranrept_requests.txt` and initialized `dateparm.txt`.
+---
+## 2026-03-13 15:47:26 CET - US-002
+Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scripts/ralph/.codex-last-message-iter-1.txt
+- Defined the canonical `store.json` envelope in backend code with schema metadata, predeclared entity collections, and reserved operational collections for sessions and job telemetry.
+- Added deterministic storage behavior for missing or empty stores and explicit schema errors for unsupported schema names or versions.
+- Documented the store contract, operational collection locations, and versioning/migration rules in backend docs and a dedicated Phase 1 schema document.
+- Files changed: `AGENTS.md`, `output/backend/README.md`, `output/backend/app/models.py`, `output/backend/app/storage.py`, `output/backend/store.json`, `output/backend/tests/test_storage.py`, `output/docs/store-schema.md`, `tasks/prd-phase-1-domain-model-and-data-contracts.md`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - Store bootstrap and service code should go through `read_store` and `write_store` so schema validation, missing-file defaults, and typed JSON handling remain centralized.
+  - Reserve future non-seed runtime state under `operations.*`; business entity collections stay top-level and always exist even before import stories populate them.
+  - Unsupported store versions should fail fast rather than attempting implicit coercion; later migration work needs an explicit transform step if schema versions diverge.
 ---

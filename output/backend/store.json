@@ -1,1 +1,22 @@
-{}
+{
+  "accounts": [],
+  "card_account_xref": [],
+  "cards": [],
+  "category_balances": [],
+  "customers": [],
+  "disclosure_groups": [],
+  "metadata": {
+    "schema_name": "carddemo.store",
+    "schema_version": 1
+  },
+  "operations": {
+    "job_run_details": [],
+    "job_runs": [],
+    "sessions": []
+  },
+  "report_requests": [],
+  "transaction_categories": [],
+  "transaction_types": [],
+  "transactions": [],
+  "users": []
+}

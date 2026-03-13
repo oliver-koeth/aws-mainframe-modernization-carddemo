@@ -7,8 +7,14 @@ from decimal import Decimal
 from pathlib import Path
 
 import pytest
-from app.models import StoragePaths
+from app.models import (
+    STORE_SCHEMA_NAME,
+    STORE_SCHEMA_VERSION,
+    StoragePaths,
+    default_store_document,
+)
 from app.storage import (
+    StoreSchemaError,
     StorageLockTimeoutError,
     get_storage_targets,
     read_json_file,
@@ -30,19 +36,27 @@ def test_storage_targets_match_scaffold_paths(storage_paths: StoragePaths) -> No
 def test_store_round_trip_restores_decimal_date_and_datetime(
     storage_paths: StoragePaths,
 ) -> None:
-    payload = {
-        "balance": Decimal("10.55"),
-        "statement_date": date(2026, 3, 12),
-        "processed_at": datetime(2026, 3, 12, 19, 30, 45, tzinfo=timezone.utc),
-        "entries": [
-            {"amount": Decimal("1.25")},
-            {"posted_on": date(2026, 3, 13)},
-        ],
-    }
+    payload = default_store_document()
+    payload["accounts"] = [
+        {
+            "account_id": "0000000001",
+            "balance": Decimal("10.55"),
+            "statement_date": date(2026, 3, 12),
+            "processed_at": datetime(2026, 3, 12, 19, 30, 45, tzinfo=timezone.utc),
+            "entries": [
+                {"amount": Decimal("1.25")},
+                {"posted_on": date(2026, 3, 13)},
+            ],
+        }
+    ]
 
     write_store(storage_paths, payload)
 
     assert read_store(storage_paths) == payload
+    assert payload["metadata"] == {
+        "schema_name": STORE_SCHEMA_NAME,
+        "schema_version": STORE_SCHEMA_VERSION,
+    }
 
 
 def test_schedules_round_trip_uses_atomic_file_replacement(
@@ -74,10 +88,35 @@ def test_read_json_file_returns_defaults_for_missing_scaffold_files(
     assert read_json_file(tmp_path / "missing-schedules.json", default=[]) == []
 
 
+def test_read_store_returns_default_document_for_missing_or_empty_store(
+    storage_paths: StoragePaths,
+) -> None:
+    assert read_store(storage_paths) == default_store_document()
+
+    storage_paths.store.write_text("", encoding="utf-8")
+
+    assert read_store(storage_paths) == default_store_document()
+
+
+def test_read_store_rejects_unsupported_schema_version(
+    storage_paths: StoragePaths,
+) -> None:
+    payload = default_store_document()
+    payload["metadata"]["schema_version"] = 99
+    write_json_file(storage_paths.store, payload)
+
+    with pytest.raises(
+        StoreSchemaError,
+        match="Unsupported store schema version",
+    ):
+        read_store(storage_paths)
+
+
 def test_write_json_file_serializes_concurrent_updates(
     storage_paths: StoragePaths,
 ) -> None:
     tmp_path = storage_paths.store.parent
+    write_store(storage_paths, default_store_document())
     write_started = threading.Event()
     release_write = threading.Event()
     original_replace = type(storage_paths.store).replace
@@ -91,11 +130,15 @@ def test_write_json_file_serializes_concurrent_updates(
     results: list[str] = []
 
     def write_first() -> None:
-        write_store(storage_paths, {"writer": "first"})
+        payload = default_store_document()
+        payload["users"] = [{"user_id": "first"}]
+        write_store(storage_paths, payload)
         results.append("first")
 
     def write_second() -> None:
-        write_store(storage_paths, {"writer": "second"})
+        payload = default_store_document()
+        payload["users"] = [{"user_id": "second"}]
+        write_store(storage_paths, payload)
         results.append("second")
 
     with pytest.MonkeyPatch.context() as monkeypatch:
@@ -114,7 +157,7 @@ def test_write_json_file_serializes_concurrent_updates(
     assert not first.is_alive()
     assert not second.is_alive()
     assert sorted(results) == ["first", "second"]
-    assert read_store(storage_paths) == {"writer": "second"}
+    assert read_store(storage_paths)["users"] == [{"user_id": "second"}]
     assert [item.name for item in tmp_path.iterdir()] == ["store.json"]
 
 

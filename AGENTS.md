@@ -122,6 +122,7 @@ If a story changes API or persistence behavior, include automated tests.
 - Preserve COBOL record semantics even when migrating storage to JSON.
 - Money should remain precise end-to-end; avoid float-based persistence logic.
 - JSON persistence must support `Decimal`, `date`, and `datetime`.
+- Treat `output/backend/app/models.py` `default_store_document()` plus `output/backend/app/storage.py` `read_store`/`write_store` validation as the authoritative top-level `store.json` contract; extend record collections inside that envelope instead of changing root keys ad hoc.
 - Writes should be atomic.
 - Concurrency protection belongs in shared storage code, not duplicated per endpoint.
 

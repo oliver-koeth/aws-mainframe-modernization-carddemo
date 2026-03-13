@@ -8,10 +8,18 @@ import time
 from contextlib import contextmanager
 from datetime import date, datetime
 from decimal import Decimal
-from app.models import StoragePaths
+from json import JSONDecodeError
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from typing import Any, Iterator, TypeAlias, cast
+
+from app.models import (
+    STORE_SCHEMA_NAME,
+    SUPPORTED_STORE_SCHEMA_VERSIONS,
+    StoragePaths,
+    StoreDocument,
+    default_store_document,
+)
 
 
 def get_storage_targets(paths: StoragePaths) -> tuple[str, str]:
@@ -38,14 +46,23 @@ class StorageLockTimeoutError(RuntimeError):
     """Raised when a scaffold storage write cannot acquire its shared lock."""
 
 
-def read_store(paths: StoragePaths) -> StorageValue:
-    """Load application data from the scaffold store file."""
-    return read_json_file(paths.store, default={})
+class StoreSchemaError(RuntimeError):
+    """Raised when `store.json` does not match the supported schema contract."""
 
 
-def write_store(paths: StoragePaths, payload: StorageValue) -> None:
-    """Persist application data to the scaffold store file atomically."""
-    write_json_file(paths.store, payload)
+def read_store(paths: StoragePaths) -> StoreDocument:
+    """Load application data from the canonical store file."""
+    payload = read_json_file(
+        paths.store,
+        default=cast(StorageValue, default_store_document()),
+    )
+    return _validate_store_document(payload)
+
+
+def write_store(paths: StoragePaths, payload: StoreDocument) -> None:
+    """Persist application data to the canonical store file atomically."""
+    _validate_store_document(payload)
+    write_json_file(paths.store, cast(StorageValue, payload))
 
 
 def read_schedules(paths: StoragePaths) -> StorageValue:
@@ -64,7 +81,13 @@ def read_json_file(path: Path, *, default: StorageValue) -> StorageValue:
         return default
 
     with path.open("r", encoding="utf-8") as handle:
-        raw_value = cast(JsonValue, json.load(handle))
+        try:
+            raw_value = cast(JsonValue, json.load(handle))
+        except JSONDecodeError as error:
+            handle.seek(0)
+            if handle.read().strip() == "":
+                return default
+            raise error
 
     return _decode_typed_values(raw_value)
 
@@ -174,3 +197,62 @@ def _decode_typed_values(value: JsonValue) -> StorageValue:
         return [_decode_typed_values(item) for item in value]
 
     return value
+
+
+def _validate_store_document(payload: object) -> StoreDocument:
+    """Validate the canonical top-level `store.json` envelope."""
+    if not isinstance(payload, dict):
+        raise StoreSchemaError("Store payload must be a JSON object")
+
+    metadata = payload.get("metadata")
+    if not isinstance(metadata, dict):
+        raise StoreSchemaError("Store metadata must be present")
+
+    schema_name = metadata.get("schema_name")
+    if schema_name != STORE_SCHEMA_NAME:
+        raise StoreSchemaError(
+            f"Unsupported store schema name: {schema_name!r}"
+        )
+
+    schema_version = metadata.get("schema_version")
+    if (
+        not isinstance(schema_version, int)
+        or schema_version not in SUPPORTED_STORE_SCHEMA_VERSIONS
+    ):
+        raise StoreSchemaError(
+            f"Unsupported store schema version: {schema_version!r}"
+        )
+
+    top_level_collections = (
+        "users",
+        "customers",
+        "accounts",
+        "cards",
+        "card_account_xref",
+        "transaction_types",
+        "transaction_categories",
+        "disclosure_groups",
+        "category_balances",
+        "transactions",
+        "report_requests",
+    )
+    for collection_name in top_level_collections:
+        collection = payload.get(collection_name)
+        if not isinstance(collection, list):
+            raise StoreSchemaError(
+                f"Store collection {collection_name!r} must be a list"
+            )
+
+    operations = payload.get("operations")
+    if not isinstance(operations, dict):
+        raise StoreSchemaError("Store operations collection must be present")
+
+    for collection_name in ("sessions", "job_runs", "job_run_details"):
+        collection = operations.get(collection_name)
+        if not isinstance(collection, list):
+            raise StoreSchemaError(
+                "Store operations collection "
+                f"{collection_name!r} must be a list"
+            )
+
+    return cast(StoreDocument, payload)

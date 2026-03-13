@@ -43,6 +43,37 @@ The acceptance baseline for this scaffold is that `python -m mypy app` and `pyth
 
 Application data lives in `store.json`. Future interactive API handlers and batch jobs should treat that file as the single shared JSON store for scaffold and migrated business data.
 
+`store.json` now uses a canonical schema envelope with explicit metadata and predeclared collections:
+
+```json
+{
+  "metadata": {
+    "schema_name": "carddemo.store",
+    "schema_version": 1
+  },
+  "users": [],
+  "customers": [],
+  "accounts": [],
+  "cards": [],
+  "card_account_xref": [],
+  "transaction_types": [],
+  "transaction_categories": [],
+  "disclosure_groups": [],
+  "category_balances": [],
+  "transactions": [],
+  "report_requests": [],
+  "operations": {
+    "sessions": [],
+    "job_runs": [],
+    "job_run_details": []
+  }
+}
+```
+
+Later migration stories should add domain records inside these collections rather than changing the top-level shape ad hoc. Session state is reserved under `operations.sessions`; batch telemetry is reserved under `operations.job_runs` and `operations.job_run_details`.
+
+When `store.json` is missing or empty, `app.storage.read_store` returns the default schema envelope. When the file declares an unsupported schema version or schema name, `read_store` raises `StoreSchemaError` so later import or migration commands fail deterministically instead of guessing how to coerce the payload.
+
 Schedule declarations live in `schedules.json`. Future scheduler and batch stories should use that file for persisted schedule configuration rather than introducing a second schedule store.
 
 Shared JSON writes go through `app.storage`, which serializes updates with a same-directory `.lock` file per target JSON document before performing a temp-file-plus-rename replacement. Future API and batch code should keep using `write_store`, `write_schedules`, or `write_json_file` directly instead of implementing ad hoc write locks at call sites.

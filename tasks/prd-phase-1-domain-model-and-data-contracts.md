@@ -47,10 +47,10 @@ The detailed inventory for this phase lives in [output/docs/phase-1-source-artif
 **Description:** As a developer, I want a versioned `store.json` schema envelope so that imported data and later mutations share one explicit contract.
 
 **Acceptance Criteria:**
-- [ ] Define the top-level `store.json` structure, including schema version metadata and entity collections.
-- [ ] Define where job run history and future session-related data will live without requiring a Phase 1 API surface.
-- [ ] Describe migration/versioning rules for future schema changes.
-- [ ] Specify deterministic behavior when a store is missing, empty, or on an unsupported schema version.
+- [x] Define the top-level `store.json` structure, including schema version metadata and entity collections in [output/docs/store-schema.md](/Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/output/docs/store-schema.md) and `output/backend/app/models.py`.
+- [x] Define where job run history and future session-related data will live without requiring a Phase 1 API surface.
+- [x] Describe migration/versioning rules for future schema changes.
+- [x] Specify deterministic behavior when a store is missing, empty, or on an unsupported schema version.
 - [ ] Typecheck passes.
 
 ### US-003: Model user security records
