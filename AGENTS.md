@@ -124,6 +124,7 @@ If a story changes API or persistence behavior, include automated tests.
 - Money should remain precise end-to-end; avoid float-based persistence logic.
 - JSON persistence must support `Decimal`, `date`, and `datetime`.
 - Treat flat files written with GNUCobol `LINE SEQUENTIAL` semantics as logically copybook-width records even when trailing spaces are omitted on disk; right-pad to the authoritative copybook width before slicing fields, then fail deterministically only when required fields are truncated, blank, or invalid.
+- Treat display-form `PIC S9(...)V99` values from flat files as COBOL signed zoned-decimal text; decode the trailing overpunch character into sign plus final digit before normalizing money fields to `Decimal`.
 - Treat `output/backend/app/models.py` `default_store_document()` plus `output/backend/app/storage.py` `read_store`/`write_store` validation as the authoritative top-level `store.json` contract; extend record collections inside that envelope instead of changing root keys ad hoc.
 - Writes should be atomic.
 - Concurrency protection belongs in shared storage code, not duplicated per endpoint.

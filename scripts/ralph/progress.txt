@@ -4,6 +4,7 @@
 - The authoritative `store.json` root contract lives in `output/backend/app/models.py` `default_store_document()` and is enforced by `output/backend/app/storage.py`; future stories should add fields inside declared collections or bump schema version intentionally instead of reshaping the root object ad hoc.
 - GNUCobol `LINE SEQUENTIAL` flat files can be physically shorter than their copybook width because trailing spaces are dropped on disk; parsers should right-pad to the logical copybook width before field slicing and then validate required fields explicitly.
 - Preserve leading-zero numeric identifiers from copybooks, such as customer IDs and SSNs, as strings in canonical JSON models unless the runtime semantics require arithmetic.
+- Display-form `PIC S9(...)V99` flat-file amounts use a trailing overpunch character for both sign and final digit; decode that suffix before normalizing account or transaction money fields to `Decimal`.
 
 Started: Fri Mar 13 13:10:05 CET 2026
 ---
@@ -51,4 +52,16 @@ Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scri
   - `CVCUS01Y` customer records use a 500-byte logical layout, but `custdata.txt` seed/runtime lines are shorter on disk because trailing filler is omitted; customer parsers must right-pad before slicing fields.
   - Preserve customer IDs and SSNs as strings even though the copybook uses numeric PIC clauses, otherwise later JSON serialization loses leading zeros that the COBOL runtime treats as significant.
   - `CUST-PRI-CARD-HOLDER-IND` is the only explicit customer-status-like flag present in `CVCUS01Y`; unsupported values should fail deterministically instead of being coerced.
+---
+## 2026-03-13 16:05:28 CET - US-005
+Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scripts/ralph/.codex-last-message-iter-4.txt
+- Added a canonical account/card domain module for `CVACT01Y`, `CVACT02Y`, and `CVACT03Y`, including typed Pydantic models, relationship-bearing identifiers, active-status normalization, and deterministic parse errors.
+- Implemented parsing for account signed-zoned-decimal money fields into `Decimal`, plus fixed-width parsing for card and card-account cross-reference seed/runtime rows.
+- Added documentation covering record widths, field mappings, and key relationships between accounts, cards, and customers, along with pytest coverage for valid seed rows and malformed records across all three layouts.
+- Verified backend quality gates with `.venv/bin/python -c "import app.main"`, `.venv/bin/python -m mypy app`, and `.venv/bin/python -m pytest` from `output/backend`.
+- Files changed: `AGENTS.md`, `output/backend/app/domain/__init__.py`, `output/backend/app/domain/accounts.py`, `output/backend/tests/test_accounts.py`, `output/docs/account-card-records.md`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - `CVACT01Y` money fields are stored as display-form signed decimals, so the last character may be an overpunch such as `{` or `N` rather than a plain digit.
+  - `ACCT-ADDR-ZIP` should stay a trimmed string, not a numeric ZIP model, because the shipped seed includes alphanumeric values like `A000000000`.
+  - `carddata.txt` and `cardxref.txt` preserve leading-zero account and customer relationships exactly as strings; later import stories should join these records by string equality without numeric coercion.
 ---
