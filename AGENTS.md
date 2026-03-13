@@ -129,6 +129,7 @@ If a story changes API or persistence behavior, include automated tests.
 - Treat transaction reference relationships as composite keys: `CVTRA04Y` categories join to `CVTRA03Y` types by `transaction_type_code`, while `CVTRA01Y` balances and `CVTRA02Y` disclosure groups both use the `transaction_type_code` + `transaction_category_code` pair and then join to accounts by `account_id` or `group_id` respectively.
 - Treat `app/data/ASCII/tranrept_requests.txt` as a pipe-delimited runtime file written by `CORPT00C`, not a fixed-width copybook record; each line is `request_timestamp|user_id|report_name|start_date|end_date`, and the emitted report names are limited to `Monthly`, `Yearly`, and `Custom`.
 - Treat `output/backend/app/models.py` `default_store_document()` plus `output/backend/app/storage.py` `read_store`/`write_store` validation as the authoritative top-level `store.json` contract; extend record collections inside that envelope instead of changing root keys ad hoc.
+- For Phase 1 seed bootstrap work, use `output/backend/app/importing.py` `parse_lines_strict()` as the shared malformed-line strategy so import commands hard-fail with structured `SeedImportError.detail` diagnostics instead of inventing per-file quarantine formats.
 - Writes should be atomic.
 - Concurrency protection belongs in shared storage code, not duplicated per endpoint.
 

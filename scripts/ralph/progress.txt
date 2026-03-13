@@ -3,6 +3,7 @@
 - For flat-file modernization stories, document both `app/data/ASCII.seed` bootstrap sources and `app/data/ASCII` runtime-managed files; `init_gnucobol_data.sh` and `reset_gnucobol_data.sh` create or reset operational files like `dateparm.txt`, `dailytran_pending.txt`, and `tranrept_requests.txt` even when those files do not have seed counterparts.
 - The authoritative `store.json` root contract lives in `output/backend/app/models.py` `default_store_document()` and is enforced by `output/backend/app/storage.py`; future stories should add fields inside declared collections or bump schema version intentionally instead of reshaping the root object ad hoc.
 - Copybook-backed parsers under `output/backend/app/domain` should reuse `output/backend/app/fixed_width.py` for width validation, field slicing, text normalization, and signed-zoned-decimal decoding; keep record-family modules focused on field mapping and domain-specific code validation.
+- Seed/bootstrap commands should run file rows through `output/backend/app/importing.py` `parse_lines_strict()` so malformed data hard-fails consistently with `SeedImportError.detail` (`source_name`, `line_number`, `raw_line`, `reason`) instead of inventing per-file quarantine formats.
 - GNUCobol `LINE SEQUENTIAL` flat files can be physically shorter than their copybook width because trailing spaces are dropped on disk; parsers should right-pad to the logical copybook width before field slicing and then validate required fields explicitly.
 - Preserve leading-zero numeric identifiers from copybooks, such as customer IDs and SSNs, as strings in canonical JSON models unless the runtime semantics require arithmetic.
 - Display-form `PIC S9(...)V99` flat-file amounts use a trailing overpunch character for both sign and final digit; decode that suffix before normalizing account or transaction money fields to `Decimal`.
@@ -114,4 +115,16 @@ Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scri
   - Keep fixed-width parsing helpers parameterized by record-family error type and message wording so shared infrastructure does not force every parser to expose the same legacy field names or diagnostics.
   - Account money fields are the current exception that allow an unsigned trailing digit in addition to signed overpunch suffixes; later money parsers should opt into that behavior explicitly rather than assuming it globally.
   - Primitive-level tests are useful for width and conversion semantics that are shared across record families; keep record-family tests focused on field mapping and business-code validation.
+---
+## 2026-03-13 16:35:36 CET - US-010
+Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scripts/ralph/.codex-last-message-iter-9.txt
+- Added `output/backend/app/importing.py` as the shared strict import wrapper for Phase 1 seed/bootstrap work, standardizing malformed-line handling as a hard-fail strategy with structured `SeedImportError.detail` diagnostics.
+- Added pytest coverage in `output/backend/tests/test_importing.py` proving the import wrapper reports malformed user-security, account, and report-request rows consistently while still returning parsed records for valid input.
+- Documented the strict malformed-line policy, where diagnostics are recorded, and the required import entry point in backend docs plus the consolidated record-layout reference.
+- Verified backend quality gates with `.venv/bin/python -c "import app.main"`, `.venv/bin/python -m mypy app`, and `.venv/bin/python -m pytest` from `output/backend`.
+- Files changed: `AGENTS.md`, `output/backend/README.md`, `output/backend/app/importing.py`, `output/backend/tests/test_importing.py`, `output/docs/record-layouts.md`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - Keep parser-level validation messages in the record-family modules and let import code add file context around them; that preserves legacy field names in diagnostics without duplicating validation logic.
+  - `parse_lines_strict()` expects parser callables with the existing keyword-only `line_number` contract used by the Phase 1 domain parsers, so future parser helpers should keep that signature for consistent import wrapping.
+  - Structured malformed-line details belong on the exception object, not only in the exception string, so later CLI or API-based import workflows can report the same diagnostics without re-parsing error text.
 ---

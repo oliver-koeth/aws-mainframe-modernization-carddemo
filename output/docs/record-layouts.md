@@ -66,6 +66,8 @@ The canonical store envelope is documented in `output/docs/store-schema.md`. Pha
 
 ## Malformed And Unsupported Data Handling
 
+- Phase 1 chooses a single malformed-line strategy for bootstrap work: hard-fail the import on the first malformed row. Import code should call `output/backend/app/importing.py` `parse_lines_strict()`, which wraps any parser `ValueError` in a `SeedImportError`.
+- Malformed-line diagnostics are recorded on `SeedImportError.detail`, which captures `source_name`, `line_number`, `raw_line`, and the parser-provided `reason`. Tests assert both the human-readable exception message and the structured `detail` fields so future import commands keep the same reporting contract.
 - Current entity parsers hard-fail deterministically on malformed lines. Unsupported widths, blank required fields, invalid dates, invalid signed-decimal suffixes, and invalid digit-only fields raise parse errors rather than being quarantined or coerced.
 - Unknown cross-file references are preserved at the record-model level when the local record itself is structurally valid; later import and service stories are responsible for enforcing referential integrity checks.
 - Unsupported code values that are record-local semantics today also fail deterministically:

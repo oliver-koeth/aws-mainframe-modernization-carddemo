@@ -78,6 +78,19 @@ Schedule declarations live in `schedules.json`. Future scheduler and batch stori
 
 Shared JSON writes go through `app.storage`, which serializes updates with a same-directory `.lock` file per target JSON document before performing a temp-file-plus-rename replacement. Future API and batch code should keep using `write_store`, `write_schedules`, or `write_json_file` directly instead of implementing ad hoc write locks at call sites.
 
+## Seed Import Error Handling
+
+Phase 1 uses a strict malformed-line strategy for bootstrap work. Import code should route source rows through `app.importing.parse_lines_strict`, which calls the record-family parser for each line and hard-fails on the first malformed row.
+
+The raised `SeedImportError` includes a structured `detail` payload with:
+
+- `source_name`
+- `line_number`
+- `raw_line`
+- `reason`
+
+This is the canonical place to record malformed-line diagnostics for bootstrap and seed-import commands. Parsers continue to own field-level validation messages; import code wraps those parser errors with source-file context instead of quarantining or coercing bad rows.
+
 ## Frontend Integration
 
 During frontend development, the Angular dev server proxies browser requests from `/api/*` to this backend process and strips the `/api` prefix before forwarding. Later frontend slices should keep using `/api` as the only browser-facing base path.
