@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from app.domain.auth import AuthenticationService
+from app.domain.lookups import LookupService
 from app.models import BackendState, StoragePaths
 
 
@@ -21,3 +22,8 @@ def build_backend_state(root: Path) -> BackendState:
 def build_authentication_service(state: BackendState) -> AuthenticationService:
     """Create the shared auth/session service bound to the backend store paths."""
     return AuthenticationService(state.paths)
+
+
+def build_lookup_service(state: BackendState) -> LookupService:
+    """Create the shared account/customer/card lookup service."""
+    return LookupService(state.paths)

@@ -63,3 +63,9 @@
 - Account monetary fields use COBOL signed zoned-decimal text. The trailing character carries both the final digit and the sign, for example `{` means positive zero and `N` means negative five.
 - Identifier fields such as account IDs, customer IDs, card numbers, and CVV codes stay as strings to preserve leading zeroes.
 - Unsupported status codes, malformed dates, non-digit identifiers, and invalid signed-decimal suffixes raise deterministic parser errors rather than being coerced silently.
+
+## Lookup Semantics
+
+- `COACTVWC` and `COACTUPC` scan `cardxref.txt` sequentially and stop on the first matching `account_id` or `card_number`; the Phase 1 `LookupService.lookup_account()` contract preserves that same first-match behavior instead of inventing a different tie-breaker.
+- `COCRDSLC` also stops on the first matching `account_id` when only an account is supplied and raises a mismatch only when both account and card inputs are present and the xref row proves they disagree; `LookupService.lookup_card()` follows that rule.
+- Customer-driven lookup is a modernization-only helper, so `LookupService.lookup_customer()` returns every related xref/account/card row in persisted `card_account_xref[]` order while still failing deterministically on broken joins.

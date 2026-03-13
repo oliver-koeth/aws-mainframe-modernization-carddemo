@@ -115,6 +115,24 @@ Phase 1 also defines `AuthenticationService.lookup_session()` over `operations.s
 
 Session lookup joins that record back to the canonical `users[]` collection and raises a deterministic consistency error if a stored session references a missing user.
 
+## Lookup Service Contracts
+
+Phase 1 now exposes `LookupService` for the COBOL inquiry flows backed by `accounts[]`, `cards[]`, `customers[]`, and `card_account_xref[]`:
+
+- `lookup_account(account_id=..., card_number=...)` mirrors `COACTVWC` and `COACTUPC`: if only a card number is supplied, the service resolves the first matching xref row and then loads the account; if an account ID is supplied, the service uses that account directly and only attaches the first related xref/customer when one exists.
+- `lookup_card(account_id=..., card_number=...)` mirrors `COCRDSLC`: account-driven card lookup resolves the first matching xref row, while a supplied card number wins direct card lookup and only raises an input error when both inputs are present and the xref proves they conflict.
+- `lookup_customer(customer_id)` returns the canonical customer plus all related xref, account, and card rows in persisted `card_account_xref[]` order.
+
+Deterministic error behavior is:
+
+- blank lookup inputs raise a domain input error
+- missing primary targets raise a domain not-found error
+- duplicate primary keys in `customers[]`, `accounts[]`, or `cards[]` raise an ambiguity error
+- account/card lookups reject primary records where `is_active` is `false`
+- broken customer-driven joins from `card_account_xref[]` to `accounts[]` or `cards[]` raise a store-consistency error instead of silently dropping related rows
+
+Current Phase 1 bootstrap data imports only active `Y` account/card status codes. If later slices persist `is_active=false` rows, lookup services already treat those primary account/card targets as inactive without changing the store envelope.
+
 ## Seed Import Error Handling
 
 Phase 1 uses a strict malformed-line strategy for bootstrap work. Import code should route source rows through `app.importing.parse_lines_strict`, which calls the record-family parser for each line and hard-fails on the first malformed row.

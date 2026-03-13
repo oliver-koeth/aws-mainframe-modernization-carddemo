@@ -16,6 +16,7 @@
 - `tranrept_requests.txt` is a runtime-managed pipe-delimited log written by `CORPT00C`, not a fixed-width copybook file; parse it as `timestamp|user_id|report_name|start_date|end_date` and only expect `Monthly`, `Yearly`, or `Custom` report names.
 - Keep `output/docs/record-layouts.md` as the top-level Phase 1 record-layout index and use the narrower `output/docs/*-records.md` files for detailed field mappings; update both layers only when the underlying source semantics change.
 - Keep shipped seed baseline counts centralized in `output/backend/tests/test_seed_import.py` and mirror the same values in `output/backend/README.md`; intentional fixture changes should update both so bootstrap drift is visible in docs and CI.
+- `card_account_xref`-driven inquiry services should preserve persisted row order: account/card lookups stop at the first matching xref to mirror GNUCobol sequential scans, while customer lookups can return all related xrefs/accounts/cards in that same order.
 
 Started: Fri Mar 13 13:10:05 CET 2026
 ---
@@ -206,4 +207,16 @@ Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scri
   - When a service consumes persisted Phase 1 collections, validate each raw row into the canonical Pydantic model before applying joins or auth logic; that keeps corrupted `store.json` data on one deterministic error path.
   - `COSGN00C` gives one shared sign-on failure path for both unknown user IDs and wrong passwords, so later session/API slices should avoid leaking which half of the credential pair failed.
   - Durable session creation is still deferred: Phase 1 can resolve pre-existing `operations.sessions` rows, but later API work will need to define how a successful sign-on writes that collection because the GNUCobol flow only carries session-like state in COMMAREA.
+---
+## 2026-03-13 17:37:22 CET - US-017
+Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scripts/ralph/.codex-last-message-iter-6.txt
+- Added `LookupService` under `output/backend/app/domain/lookups.py` with framework-agnostic account, customer, and card retrieval methods backed by canonical store validation and explicit domain errors for blank input, missing rows, duplicate primary keys, inactive primary account/card records, and broken related joins.
+- Wired the lookup service through backend exports and `app.services`, and documented the authoritative GNUCobol lookup semantics in backend/docs plus the repo agent instructions.
+- Added pytest coverage for successful account/card/customer lookups, first-match xref behavior, mismatch handling, inactive records, duplicate-key ambiguity, and broken customer relationship joins.
+- Verified `.venv/bin/python -c "import app.main"`, `.venv/bin/python -m mypy app`, and `.venv/bin/python -m pytest` from `output/backend`.
+- Files changed: `AGENTS.md`, `output/backend/README.md`, `output/backend/app/domain/__init__.py`, `output/backend/app/domain/lookups.py`, `output/backend/app/services.py`, `output/backend/tests/test_lookups.py`, `output/docs/account-card-records.md`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - The account/card inquiry programs do not treat multiple xrefs for one account as an error; they stop on the first sequential match, so any modernization service that emulates those flows should preserve persisted `card_account_xref` ordering instead of sorting or deduplicating first.
+  - Customer-driven lookup is a modernization helper rather than a direct COBOL screen, so it can return all related accounts/cards in xref order while still failing fast on missing joined rows that would indicate a corrupted `store.json`.
+  - `is_active` is the service-level gate for inactive account/card lookups even though Phase 1 seed import currently only writes active `Y` status codes; later writers can reuse that boolean without changing the lookup API.
 ---
