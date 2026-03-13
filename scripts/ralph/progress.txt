@@ -14,6 +14,7 @@
 - Display-form `PIC S9(...)V99` flat-file amounts use a trailing overpunch character for both sign and final digit; decode that suffix before normalizing account or transaction money fields to `Decimal`.
 - Transaction reference joins are composite: `CVTRA04Y` categories key on `transaction_type_code` + `transaction_category_code`, `CVTRA03Y` supplies the type lookup, `CVTRA01Y` category balances attach that pair to `account_id`, and `CVTRA02Y` disclosure groups attach the same pair to `account_group_id`.
 - `tranrept_requests.txt` is a runtime-managed pipe-delimited log written by `CORPT00C`, not a fixed-width copybook file; parse it as `timestamp|user_id|report_name|start_date|end_date` and only expect `Monthly`, `Yearly`, or `Custom` report names.
+- Preserve `CORPT00C` report-request behavior as append-only: later services should keep duplicate requests in persisted order, derive `Monthly`/`Yearly` date windows from the current date, and reserve explicit start/end inputs for `Custom` requests only.
 - Keep `output/docs/record-layouts.md` as the top-level Phase 1 record-layout index and use the narrower `output/docs/*-records.md` files for detailed field mappings; update both layers only when the underlying source semantics change.
 - Keep shipped seed baseline counts centralized in `output/backend/tests/test_seed_import.py` and mirror the same values in `output/backend/README.md`; intentional fixture changes should update both so bootstrap drift is visible in docs and CI.
 - `card_account_xref`-driven inquiry services should preserve persisted row order: account/card lookups stop at the first matching xref to mirror GNUCobol sequential scans, while customer lookups can return all related xrefs/accounts/cards in that same order.
@@ -247,4 +248,16 @@ Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scri
   - Keep online bill payment and posted-transaction balance updates as separate service paths; collapsing them would erase an explicit COBOL difference that later APIs and batch jobs need to preserve.
   - Shared transaction ID allocation belongs in a reusable helper because both transaction-entry and online bill-pay flows scan persisted `transactions[]` in store order instead of using a max lookup.
   - `CBTRN02C` updates the first matching `category_balances[]` row in persisted order and creates a new row only when none exists, so later posting/balance mutation work should not sort or deduplicate TCATBAL rows before applying updates.
+---
+## 2026-03-13 18:01:54 CET - US-020
+Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scripts/ralph/.codex-last-message-iter-9.txt
+- Added `ReportRequestService` under `output/backend/app/domain/report_requests.py` with shared create/list methods backed by `store.json`, canonical validation for requesting users and report types, and `CORPT00C`-derived date-window behavior for `Monthly`, `Yearly`, and `Custom` requests.
+- Wired the service through backend domain exports and `app.services`, documented the append-only request semantics in backend/docs plus the repo agent guidance, and kept duplicate requests in persisted order instead of inventing deduplication.
+- Added pytest coverage for successful request creation and retrieval, derived monthly/yearly ranges, representative validation failures, and deterministic store-consistency errors for dangling report-request rows.
+- Verified `.venv/bin/python -c "import app.main"`, `.venv/bin/python -m mypy app`, and `.venv/bin/python -m pytest` from `output/backend`.
+- Files changed: `AGENTS.md`, `output/backend/README.md`, `output/backend/app/domain/__init__.py`, `output/backend/app/domain/report_requests.py`, `output/backend/app/services.py`, `output/backend/tests/test_report_requests.py`, `output/docs/transaction-activity-records.md`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - `CORPT00C` does not check for duplicate report requests before appending to `tranrept_requests.txt`, so later API or batch surfaces should preserve repeated requests rather than inferring a uniqueness rule that the runtime does not have.
+  - Monthly and yearly report windows are runtime-derived from the current date; only custom requests carry explicit start/end inputs through persistence.
+  - Retrieval helpers over `report_requests[]` should validate both the stored request row shape and the referenced `users[]` row up front so corrupted store data stays on one deterministic consistency-error path.
 ---

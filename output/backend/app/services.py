@@ -7,6 +7,7 @@ from pathlib import Path
 from app.domain.auth import AuthenticationService
 from app.domain.lookups import LookupService
 from app.domain.posting import PostingService
+from app.domain.report_requests import ReportRequestService
 from app.domain.transactions import TransactionService
 from app.models import BackendState, StoragePaths
 
@@ -39,3 +40,8 @@ def build_transaction_service(state: BackendState) -> TransactionService:
 def build_posting_service(state: BackendState) -> PostingService:
     """Create the shared posting service for online and batch payment flows."""
     return PostingService(state.paths)
+
+
+def build_report_request_service(state: BackendState) -> ReportRequestService:
+    """Create the shared report-request capture and retrieval service."""
+    return ReportRequestService(state.paths)

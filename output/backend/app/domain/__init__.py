@@ -41,6 +41,13 @@ from .posting import (
     PostingStoreConsistencyError,
     PostingValidationError,
 )
+from .report_requests import (
+    ReportRequestCreateRequest,
+    ReportRequestService,
+    ReportRequestServiceError,
+    ReportRequestStoreConsistencyError,
+    ReportRequestValidationError,
+)
 from .accounts import (
     ACCOUNT_RECORD_WIDTH,
     CARD_ACCOUNT_XREF_RECORD_WIDTH,
@@ -139,6 +146,11 @@ __all__ = [
     "PostingServiceError",
     "PostingStoreConsistencyError",
     "PostingValidationError",
+    "ReportRequestCreateRequest",
+    "ReportRequestService",
+    "ReportRequestServiceError",
+    "ReportRequestStoreConsistencyError",
+    "ReportRequestValidationError",
     "ACCOUNT_RECORD_WIDTH",
     "CARD_ACCOUNT_XREF_RECORD_WIDTH",
     "CARD_RECORD_WIDTH",

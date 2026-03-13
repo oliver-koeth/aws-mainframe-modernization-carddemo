@@ -61,6 +61,23 @@ When a transaction is created, the service mirrors `COTRN02C` append behavior by
 
 The COBOL source only performs basic `YYYY-MM-DD` shape checks with month/day range bounds. The modernization service is intentionally stricter here because canonical JSON stores typed `date`/`datetime` values, so impossible calendar dates such as `2026-02-30` are rejected instead of being coerced.
 
+## Report Request Service
+
+Phase 1 now exposes `ReportRequestService` under `output/backend/app/domain/report_requests.py` for the `app/cbl/CORPT00C.cbl` report-launcher flow.
+
+- `create_report_request()` validates the requesting user against `users[]`, normalizes the report type, derives the date window, stamps `requested_at`, appends the canonical `ReportRequestRecord` to `report_requests[]`, and persists through `app.storage.write_store`.
+- `list_report_requests()` returns canonical `ReportRequestRecord` rows in persisted order, with optional filtering by requesting user ID and report type.
+
+Current validation and persistence rules are:
+
+- preserve `CORPT00C` append-only behavior: every confirmed request is appended, and the service does not suppress duplicates or merge overlapping date windows
+- accept only `Monthly`, `Yearly`, or `Custom` report types
+- derive `Monthly` windows as the first and last day of the current month
+- derive `Yearly` windows as January 1 through December 31 of the current year
+- require explicit `start_date` and `end_date` only for `Custom` reports and reject custom dates on non-custom requests
+- reject requests whose start date is after the end date
+- raise a deterministic store-consistency error when a persisted report-request row is malformed or references a missing user
+
 ## Posting Service
 
 Phase 1 also exposes `PostingService` for the bill-payment behavior that the flat-file runtime splits between `COBIL00C` and `CBTRN02C`.

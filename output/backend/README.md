@@ -167,6 +167,21 @@ The important COBOL difference is intentional and documented:
 
 Current Phase 1 validation is limited to the deterministic prerequisites needed by those paths: the target account/card must resolve through shared store data, the account must have a positive balance for online bill payment, and posted transactions still reject origination dates after account expiration.
 
+## Report Request Service Contracts
+
+Phase 1 now exposes `ReportRequestService` under `app.domain.report_requests` for the `app/cbl/CORPT00C.cbl` report-launcher flow.
+
+- `create_report_request()` validates the requesting user against `users[]`, normalizes `report_type`, derives the requested date window, stamps `requested_at`, and appends the new `ReportRequestRecord` to `report_requests[]`.
+- `list_report_requests()` returns persisted `report_requests[]` rows in store order and supports optional filtering by `requested_by_user_id` and `report_type`.
+
+The current service intentionally preserves the COBOL append behavior: it does not de-duplicate or collapse existing requests, even when the same user requests the same report type and date range repeatedly. Date-window rules mirror `CORPT00C`:
+
+- `Monthly` derives the first and last day of the current month
+- `Yearly` derives January 1 through December 31 of the current year
+- `Custom` requires explicit `start_date` and `end_date`
+
+Requests for unknown users, unsupported report types, non-custom requests with explicit date overrides, or custom ranges where `start_date > end_date` fail with deterministic validation errors. Persisted report-request rows are also validated on read so malformed rows or dangling `requested_by_user_id` references surface as store-consistency errors instead of leaking raw dicts into later services.
+
 ## Seed Import Error Handling
 
 Phase 1 uses a strict malformed-line strategy for bootstrap work. Import code should route source rows through `app.importing.parse_lines_strict`, which calls the record-family parser for each line and hard-fails on the first malformed row.
