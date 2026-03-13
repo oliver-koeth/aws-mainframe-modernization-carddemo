@@ -60,3 +60,28 @@ Phase 1 now exposes `TransactionService` under `output/backend/app/domain/transa
 When a transaction is created, the service mirrors `COTRN02C` append behavior by scanning persisted `transactions[]` in store order, remembering the last numeric `transaction_id`, incrementing it by one, zero-padding to 16 digits, and appending the new row at the end of the collection. As in the COBOL program, nonnumeric historical IDs do not participate in next-ID assignment.
 
 The COBOL source only performs basic `YYYY-MM-DD` shape checks with month/day range bounds. The modernization service is intentionally stricter here because canonical JSON stores typed `date`/`datetime` values, so impossible calendar dates such as `2026-02-30` are rejected instead of being coerced.
+
+## Posting Service
+
+Phase 1 also exposes `PostingService` for the bill-payment behavior that the flat-file runtime splits between `COBIL00C` and `CBTRN02C`.
+
+`PostingService.create_online_bill_payment(account_id=...)` mirrors the online bill-pay screen:
+
+- resolve the first related card for the supplied account using persisted `card_account_xref[]` order
+- require a positive `accounts[].current_balance`
+- append a canonical payment transaction with fixed COBOL values: `transaction_type_code="02"`, `transaction_category_code="0002"`, `source="POS TERM"`, `description="BILL PAYMENT - ONLINE"`, merchant ID `999999999`, merchant name `BILL PAYMENT`, merchant city `N/A`, merchant ZIP `N/A`
+- stamp both `originated_at` and `processed_at` from the current runtime timestamp
+- set only `accounts[].current_balance` to zero after writing the transaction
+
+That last rule is important: the current GNUCobol online flow does not also rewrite `category_balances[]`, `current_cycle_credit`, or `current_cycle_debit`.
+
+`PostingService.post_transaction(transaction)` mirrors the `CBTRN02C` posting update path over a canonical `TransactionRecord`:
+
+- resolve the account from the transaction card number through the first matching xref row
+- stamp `processed_at` with the current runtime timestamp when it is absent
+- append the posted transaction to `transactions[]`
+- update the first matching `category_balances[]` row for `(account_id, transaction_type_code, transaction_category_code)` or create a new row when none exists
+- add the transaction amount into `accounts[].current_balance`
+- add nonnegative amounts into `accounts[].current_cycle_credit`; add negative amounts into `accounts[].current_cycle_debit`
+
+This means the modernization layer preserves the COBOL split between immediate online bill payment and later posting updates instead of collapsing them into one inferred balance rule.

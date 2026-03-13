@@ -153,6 +153,20 @@ Current validation rules are:
 
 Next transaction IDs follow the COBOL append scan instead of a max lookup: the service walks persisted `transactions[]` in store order, remembers the last numeric `transaction_id`, increments it, and zero-pads to 16 digits. Nonnumeric historical IDs are ignored for ID assignment but remain valid persisted records.
 
+## Posting Service Contracts
+
+Phase 1 now exposes `PostingService` under `app.domain.posting` for the bill-payment and posting semantics split across `app/cbl/COBIL00C.cbl` and `app/cbl/CBTRN02C.cbl`.
+
+- `create_online_bill_payment(account_id=...)` mirrors `COBIL00C`: resolve the first related card for the supplied account, append a fixed payment transaction (`type=02`, `category=0002`, merchant `999999999` / `BILL PAYMENT`), and then zero only `accounts[].current_balance`.
+- `post_transaction(transaction)` mirrors the `CBTRN02C` posting update path: append the supplied `TransactionRecord`, stamp `processed_at` when it is missing, add the transaction amount into the first matching `category_balances[]` row or create one if none exists, and update the account's `current_balance` plus the current-cycle credit/debit bucket according to the transaction sign.
+
+The important COBOL difference is intentional and documented:
+
+- online bill payment does not update `category_balances[]`, `current_cycle_credit`, or `current_cycle_debit`; it only writes the payment transaction and zeroes the account balance
+- posted-transaction handling does update `category_balances[]` and the cycle buckets, preserving the `CBTRN02C` first-match TCATBAL scan semantics
+
+Current Phase 1 validation is limited to the deterministic prerequisites needed by those paths: the target account/card must resolve through shared store data, the account must have a positive balance for online bill payment, and posted transactions still reject origination dates after account expiration.
+
 ## Seed Import Error Handling
 
 Phase 1 uses a strict malformed-line strategy for bootstrap work. Import code should route source rows through `app.importing.parse_lines_strict`, which calls the record-family parser for each line and hard-fails on the first malformed row.

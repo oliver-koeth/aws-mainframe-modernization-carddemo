@@ -31,6 +31,15 @@ from .transactions import (
     TransactionStoreConsistencyError,
     TransactionValidationError,
     ValidatedTransactionInput,
+    assign_next_transaction_id,
+)
+from .posting import (
+    OnlineBillPaymentResult,
+    PostedTransactionResult,
+    PostingService,
+    PostingServiceError,
+    PostingStoreConsistencyError,
+    PostingValidationError,
 )
 from .accounts import (
     ACCOUNT_RECORD_WIDTH,
@@ -123,6 +132,13 @@ __all__ = [
     "TransactionStoreConsistencyError",
     "TransactionValidationError",
     "ValidatedTransactionInput",
+    "assign_next_transaction_id",
+    "OnlineBillPaymentResult",
+    "PostedTransactionResult",
+    "PostingService",
+    "PostingServiceError",
+    "PostingStoreConsistencyError",
+    "PostingValidationError",
     "ACCOUNT_RECORD_WIDTH",
     "CARD_ACCOUNT_XREF_RECORD_WIDTH",
     "CARD_RECORD_WIDTH",

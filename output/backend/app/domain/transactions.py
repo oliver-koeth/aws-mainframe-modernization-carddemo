@@ -239,7 +239,7 @@ class TransactionService:
             TransactionRecord,
             collection_name="transactions",
         )
-        next_transaction_id = _assign_next_transaction_id(existing_transactions)
+        next_transaction_id = assign_next_transaction_id(existing_transactions)
         transaction = TransactionRecord(
             transaction_id=next_transaction_id,
             transaction_type_code=validated.transaction_type.transaction_type_code,
@@ -438,7 +438,7 @@ def _build_composite_index[T, K](
     return index
 
 
-def _assign_next_transaction_id(transactions: list[TransactionRecord]) -> str:
+def assign_next_transaction_id(transactions: list[TransactionRecord]) -> str:
     last_numeric_transaction_id = 0
     for transaction in transactions:
         if transaction.transaction_id.isdigit():

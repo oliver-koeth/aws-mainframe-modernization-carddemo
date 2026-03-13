@@ -20,6 +20,7 @@
 - The `COTRN02C` modernization service should resolve account/card inputs through `LookupService.lookup_card()` so transaction-add validation inherits the same first-match xref behavior, mismatch errors, and inactive-record checks as the inquiry flows.
 - `COTRN02C` next-transaction ID assignment is order-sensitive: scan persisted `transactions[]` in store order, update the remembered value only when `transaction_id` is numeric, and increment the last numeric row instead of taking a collection-wide maximum.
 - Phase 1 transaction creation should require the `(account_id, transaction_type_code, transaction_category_code)` row to exist in `category_balances[]` before appending a new transaction, so created events already map to a persisted posting bucket for later posting/balance stories.
+- Keep bill-payment semantics split by source program: `COBIL00C` online bill payment appends a fixed payment transaction and zeroes only `accounts[].current_balance`, while `CBTRN02C` posting appends the posted transaction, updates the first matching `category_balances[]` row, and adjusts the account cycle bucket by transaction sign.
 
 Started: Fri Mar 13 13:10:05 CET 2026
 ---
@@ -234,4 +235,16 @@ Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scri
   - Reuse `LookupService.lookup_card()` inside transaction-add flows instead of re-implementing card/account xref scans; it already matches the COBOL first-match and inactive-record behavior.
   - Keep transaction-creation amount validation string-based at the service boundary because `COTRN02C` validates the signed textual input format before it ever writes the zoned-decimal transaction field.
   - When later stories post or mutate transactions, preserve the current append-order ID rule; changing it to a max-based allocator would diverge from `COTRN02C` if historical rows are ever reordered or contain nonnumeric IDs.
+---
+## 2026-03-13 17:55:36 CET - US-019
+Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scripts/ralph/.codex-last-message-iter-8.txt
+- Added `PostingService` under `output/backend/app/domain/posting.py` with separate `create_online_bill_payment()` and `post_transaction()` paths so the modernization code preserves the COBOL split between `COBIL00C` online bill payment and `CBTRN02C` posted-transaction balance updates.
+- Reused the transaction ID allocator as a shared domain helper, wired the posting service through backend exports/service builders, and documented the exact balance-update differences in backend and record-layout docs.
+- Added pytest coverage for successful online bill payment, successful posted payment application, and representative validation/store-consistency failures.
+- Verified `.venv/bin/python -c "import app.main"`, `.venv/bin/python -m mypy app`, and `.venv/bin/python -m pytest` from `output/backend`.
+- Files changed: `AGENTS.md`, `output/backend/README.md`, `output/backend/app/domain/__init__.py`, `output/backend/app/domain/posting.py`, `output/backend/app/domain/transactions.py`, `output/backend/app/services.py`, `output/backend/tests/test_posting.py`, `output/docs/transaction-activity-records.md`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - Keep online bill payment and posted-transaction balance updates as separate service paths; collapsing them would erase an explicit COBOL difference that later APIs and batch jobs need to preserve.
+  - Shared transaction ID allocation belongs in a reusable helper because both transaction-entry and online bill-pay flows scan persisted `transactions[]` in store order instead of using a max lookup.
+  - `CBTRN02C` updates the first matching `category_balances[]` row in persisted order and creates a new row only when none exists, so later posting/balance mutation work should not sort or deduplicate TCATBAL rows before applying updates.
 ---
