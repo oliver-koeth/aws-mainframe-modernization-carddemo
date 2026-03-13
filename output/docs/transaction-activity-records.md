@@ -40,3 +40,23 @@ The GNUCobol flat-file runtime is authoritative for these records. `CVTRA05Y` an
 - Serialize `datetime` values as ISO 8601 strings without timezone offsets because the source flat files do not carry timezone information.
 - Persist job telemetry in `store.json` under `operations.job_runs` and `operations.job_run_details`; no separate telemetry file is introduced in Phase 1.
 - Preserve source fields that later slices do not yet consume, such as transaction filler text and disclosure/report metadata already represented in the canonical models, instead of silently dropping them during import.
+
+## Transaction Creation Service
+
+Phase 1 now exposes `TransactionService` under `output/backend/app/domain/transactions.py` for the `COTRN02C` transaction-add flow. The service is storage-backed and framework-agnostic: it validates raw transaction-add inputs, resolves the account/card pair through the shared lookup service, and appends a canonical `TransactionRecord` into `store.json`.
+
+`TransactionService.validate_transaction()` and `create_transaction()` currently enforce these `COTRN02C`-derived rules:
+
+- resolve the card/account pair using the same first-match xref semantics as the lookup service, and fail when the supplied account/card values conflict or the primary account/card is inactive
+- require a 2-digit numeric `transaction_type_code` and a 4-digit numeric `transaction_category_code`
+- require the resolved type/category pair to exist in `transaction_types[]` and `transaction_categories[]`
+- require the resolved `(account_id, transaction_type_code, transaction_category_code)` row to exist in `category_balances[]` so the created transaction already maps to a persisted posting bucket
+- require nonblank `source`, `description`, merchant name, merchant city, and merchant ZIP values, and reject values that would overflow the authoritative fixed-width fields
+- require `merchant_id` to be exactly 9 digits so the canonical `TransactionRecord` stays compatible with the `CVTRA05Y`/`CVTRA06Y` layout
+- require amount text in signed decimal form such as `+00000123.45` or `-00000123.45`; the service does not round and rejects values that do not fit the 11-character signed-zoned-decimal storage field
+- require `originated_on` and optional `processed_on` in `YYYY-MM-DD` form, defaulting the processed date to the original date when omitted
+- reject transactions whose original date is after the resolved account expiration date
+
+When a transaction is created, the service mirrors `COTRN02C` append behavior by scanning persisted `transactions[]` in store order, remembering the last numeric `transaction_id`, incrementing it by one, zero-padding to 16 digits, and appending the new row at the end of the collection. As in the COBOL program, nonnumeric historical IDs do not participate in next-ID assignment.
+
+The COBOL source only performs basic `YYYY-MM-DD` shape checks with month/day range bounds. The modernization service is intentionally stricter here because canonical JSON stores typed `date`/`datetime` values, so impossible calendar dates such as `2026-02-30` are rejected instead of being coerced.

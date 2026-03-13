@@ -133,6 +133,26 @@ Deterministic error behavior is:
 
 Current Phase 1 bootstrap data imports only active `Y` account/card status codes. If later slices persist `is_active=false` rows, lookup services already treat those primary account/card targets as inactive without changing the store envelope.
 
+## Transaction Service Contracts
+
+Phase 1 now exposes `TransactionService` for the `app/cbl/COTRN02C.cbl` transaction-add workflow.
+
+- `validate_transaction(request)` normalizes raw add-transaction inputs without mutating storage.
+- `create_transaction(request)` reuses the same validation path, assigns the next transaction ID, appends the canonical `TransactionRecord` to `transactions[]`, and persists through `app.storage.write_store`.
+
+Current validation rules are:
+
+- resolve account/card input through the shared lookup semantics and reject missing, mismatched, or inactive primary account/card rows
+- require a 2-digit numeric type code and 4-digit numeric category code
+- require the resolved type/category pair to exist in `transaction_types[]` and `transaction_categories[]`
+- require an existing `category_balances[]` row for `(account_id, transaction_type_code, transaction_category_code)` before a new transaction can be created
+- require signed amount text with exactly two fractional digits, no rounding, and a range that fits the 11-character signed-zoned-decimal transaction field
+- require nonblank merchant/source/description fields that do not overflow the fixed-width layout
+- require `originated_on` and `processed_on` in `YYYY-MM-DD` form, defaulting the processed date to the original date when omitted
+- reject original dates after the resolved account expiration date
+
+Next transaction IDs follow the COBOL append scan instead of a max lookup: the service walks persisted `transactions[]` in store order, remembers the last numeric `transaction_id`, increments it, and zero-pads to 16 digits. Nonnumeric historical IDs are ignored for ID assignment but remain valid persisted records.
+
 ## Seed Import Error Handling
 
 Phase 1 uses a strict malformed-line strategy for bootstrap work. Import code should route source rows through `app.importing.parse_lines_strict`, which calls the record-family parser for each line and hard-fails on the first malformed row.

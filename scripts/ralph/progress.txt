@@ -17,6 +17,9 @@
 - Keep `output/docs/record-layouts.md` as the top-level Phase 1 record-layout index and use the narrower `output/docs/*-records.md` files for detailed field mappings; update both layers only when the underlying source semantics change.
 - Keep shipped seed baseline counts centralized in `output/backend/tests/test_seed_import.py` and mirror the same values in `output/backend/README.md`; intentional fixture changes should update both so bootstrap drift is visible in docs and CI.
 - `card_account_xref`-driven inquiry services should preserve persisted row order: account/card lookups stop at the first matching xref to mirror GNUCobol sequential scans, while customer lookups can return all related xrefs/accounts/cards in that same order.
+- The `COTRN02C` modernization service should resolve account/card inputs through `LookupService.lookup_card()` so transaction-add validation inherits the same first-match xref behavior, mismatch errors, and inactive-record checks as the inquiry flows.
+- `COTRN02C` next-transaction ID assignment is order-sensitive: scan persisted `transactions[]` in store order, update the remembered value only when `transaction_id` is numeric, and increment the last numeric row instead of taking a collection-wide maximum.
+- Phase 1 transaction creation should require the `(account_id, transaction_type_code, transaction_category_code)` row to exist in `category_balances[]` before appending a new transaction, so created events already map to a persisted posting bucket for later posting/balance stories.
 
 Started: Fri Mar 13 13:10:05 CET 2026
 ---
@@ -219,4 +222,16 @@ Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scri
   - The account/card inquiry programs do not treat multiple xrefs for one account as an error; they stop on the first sequential match, so any modernization service that emulates those flows should preserve persisted `card_account_xref` ordering instead of sorting or deduplicating first.
   - Customer-driven lookup is a modernization helper rather than a direct COBOL screen, so it can return all related accounts/cards in xref order while still failing fast on missing joined rows that would indicate a corrupted `store.json`.
   - `is_active` is the service-level gate for inactive account/card lookups even though Phase 1 seed import currently only writes active `Y` status codes; later writers can reuse that boolean without changing the lookup API.
+---
+## 2026-03-13 17:45:15 CET - US-018
+Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scripts/ralph/.codex-last-message-iter-7.txt
+- Added `TransactionService` under `output/backend/app/domain/transactions.py` with `validate_transaction()` and `create_transaction()` methods derived from `COTRN02C`, including lookup-backed account/card resolution, strict type/category/amount/date/merchant validation, category-balance joins, expiration checks, and append-style transaction ID assignment.
+- Wired the service through backend domain exports and `app.services`, documented the Phase 1 transaction-add contract and the intentional stricter calendar-date normalization in backend/docs, and added the reusable transaction ID rule to the repo agent guidance.
+- Added pytest coverage for successful transaction creation, normalization/defaulting behavior, representative validation failures, expiration rejection, and deterministic store-consistency failure when persisted transactions are malformed.
+- Verified `.venv/bin/python -c "import app.main"`, `.venv/bin/python -m mypy app`, and `.venv/bin/python -m pytest` from `output/backend`.
+- Files changed: `AGENTS.md`, `output/backend/README.md`, `output/backend/app/domain/__init__.py`, `output/backend/app/domain/transactions.py`, `output/backend/app/services.py`, `output/backend/tests/test_transactions.py`, `output/docs/transaction-activity-records.md`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - Reuse `LookupService.lookup_card()` inside transaction-add flows instead of re-implementing card/account xref scans; it already matches the COBOL first-match and inactive-record behavior.
+  - Keep transaction-creation amount validation string-based at the service boundary because `COTRN02C` validates the signed textual input format before it ever writes the zoned-decimal transaction field.
+  - When later stories post or mutate transactions, preserve the current append-order ID rule; changing it to a max-based allocator would diverge from `COTRN02C` if historical rows are ever reordered or contain nonnumeric IDs.
 ---
