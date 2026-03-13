@@ -6,34 +6,20 @@ from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.fixed_width import (
+    optional_text,
+    prepare_fixed_width_record,
+    required_digits,
+    required_signed_amount,
+    required_text,
+    slice_field,
+)
+
 
 CATEGORY_BALANCE_RECORD_WIDTH = 50
 DISCLOSURE_GROUP_RECORD_WIDTH = 50
 TRANSACTION_TYPE_RECORD_WIDTH = 60
 TRANSACTION_CATEGORY_RECORD_WIDTH = 60
-
-_COBOL_SIGNED_DIGIT_MAP: dict[str, tuple[str, int]] = {
-    "{": ("0", 1),
-    "A": ("1", 1),
-    "B": ("2", 1),
-    "C": ("3", 1),
-    "D": ("4", 1),
-    "E": ("5", 1),
-    "F": ("6", 1),
-    "G": ("7", 1),
-    "H": ("8", 1),
-    "I": ("9", 1),
-    "}": ("0", -1),
-    "J": ("1", -1),
-    "K": ("2", -1),
-    "L": ("3", -1),
-    "M": ("4", -1),
-    "N": ("5", -1),
-    "O": ("6", -1),
-    "P": ("7", -1),
-    "Q": ("8", -1),
-    "R": ("9", -1),
-}
 
 
 class TransactionReferenceParseError(ValueError):
@@ -87,30 +73,37 @@ class TransactionCategoryRecord(BaseModel):
 
 def parse_category_balance_record(line: str, *, line_number: int = 1) -> CategoryBalanceRecord:
     """Parse one `tcatbal.txt` line into the canonical category-balance model."""
-    if len(line) > CATEGORY_BALANCE_RECORD_WIDTH:
-        raise TransactionReferenceParseError(
-            f"Line {line_number}: expected at most {CATEGORY_BALANCE_RECORD_WIDTH} characters, "
-            f"received {len(line)}."
-        )
-
-    record = line.ljust(CATEGORY_BALANCE_RECORD_WIDTH)
-    account_id = _required_digits(_slice(record, 0, 11), "TRANCAT-ACCT-ID", line_number)
-    transaction_type_code = _required_text(
-        _slice(record, 11, 2),
-        "TRANCAT-TYPE-CD",
-        line_number,
+    record = prepare_fixed_width_record(
+        line,
+        record_width=CATEGORY_BALANCE_RECORD_WIDTH,
+        line_number=line_number,
+        error_type=TransactionReferenceParseError,
     )
-    transaction_category_code = _required_digits(
-        _slice(record, 13, 4),
-        "TRANCAT-CD",
-        line_number,
+    account_id = required_digits(
+        slice_field(record, 0, 11),
+        field_name="TRANCAT-ACCT-ID",
+        line_number=line_number,
+        error_type=TransactionReferenceParseError,
     )
-    balance = _required_signed_amount(
-        _slice(record, 17, 11),
-        "TRAN-CAT-BAL",
-        line_number,
+    transaction_type_code = required_text(
+        slice_field(record, 11, 2),
+        field_name="TRANCAT-TYPE-CD",
+        line_number=line_number,
+        error_type=TransactionReferenceParseError,
     )
-    filler = _optional_text(_slice(record, 28, 22))
+    transaction_category_code = required_digits(
+        slice_field(record, 13, 4),
+        field_name="TRANCAT-CD",
+        line_number=line_number,
+        error_type=TransactionReferenceParseError,
+    )
+    balance = required_signed_amount(
+        slice_field(record, 17, 11),
+        field_name="TRAN-CAT-BAL",
+        line_number=line_number,
+        error_type=TransactionReferenceParseError,
+    )
+    filler = optional_text(slice_field(record, 28, 22))
 
     return CategoryBalanceRecord(
         account_id=account_id,
@@ -123,30 +116,37 @@ def parse_category_balance_record(line: str, *, line_number: int = 1) -> Categor
 
 def parse_disclosure_group_record(line: str, *, line_number: int = 1) -> DisclosureGroupRecord:
     """Parse one `discgrp.txt` line into the canonical disclosure-group model."""
-    if len(line) > DISCLOSURE_GROUP_RECORD_WIDTH:
-        raise TransactionReferenceParseError(
-            f"Line {line_number}: expected at most {DISCLOSURE_GROUP_RECORD_WIDTH} characters, "
-            f"received {len(line)}."
-        )
-
-    record = line.ljust(DISCLOSURE_GROUP_RECORD_WIDTH)
-    account_group_id = _required_text(_slice(record, 0, 10), "DIS-ACCT-GROUP-ID", line_number)
-    transaction_type_code = _required_text(
-        _slice(record, 10, 2),
-        "DIS-TRAN-TYPE-CD",
-        line_number,
+    record = prepare_fixed_width_record(
+        line,
+        record_width=DISCLOSURE_GROUP_RECORD_WIDTH,
+        line_number=line_number,
+        error_type=TransactionReferenceParseError,
     )
-    transaction_category_code = _required_digits(
-        _slice(record, 12, 4),
-        "DIS-TRAN-CAT-CD",
-        line_number,
+    account_group_id = required_text(
+        slice_field(record, 0, 10),
+        field_name="DIS-ACCT-GROUP-ID",
+        line_number=line_number,
+        error_type=TransactionReferenceParseError,
     )
-    interest_rate = _required_signed_amount(
-        _slice(record, 16, 6),
-        "DIS-INT-RATE",
-        line_number,
+    transaction_type_code = required_text(
+        slice_field(record, 10, 2),
+        field_name="DIS-TRAN-TYPE-CD",
+        line_number=line_number,
+        error_type=TransactionReferenceParseError,
     )
-    filler = _optional_text(_slice(record, 22, 28))
+    transaction_category_code = required_digits(
+        slice_field(record, 12, 4),
+        field_name="DIS-TRAN-CAT-CD",
+        line_number=line_number,
+        error_type=TransactionReferenceParseError,
+    )
+    interest_rate = required_signed_amount(
+        slice_field(record, 16, 6),
+        field_name="DIS-INT-RATE",
+        line_number=line_number,
+        error_type=TransactionReferenceParseError,
+    )
+    filler = optional_text(slice_field(record, 22, 28))
 
     return DisclosureGroupRecord(
         account_group_id=account_group_id,
@@ -159,16 +159,25 @@ def parse_disclosure_group_record(line: str, *, line_number: int = 1) -> Disclos
 
 def parse_transaction_type_record(line: str, *, line_number: int = 1) -> TransactionTypeRecord:
     """Parse one `trantype.txt` line into the canonical transaction-type model."""
-    if len(line) > TRANSACTION_TYPE_RECORD_WIDTH:
-        raise TransactionReferenceParseError(
-            f"Line {line_number}: expected at most {TRANSACTION_TYPE_RECORD_WIDTH} characters, "
-            f"received {len(line)}."
-        )
-
-    record = line.ljust(TRANSACTION_TYPE_RECORD_WIDTH)
-    transaction_type_code = _required_text(_slice(record, 0, 2), "TRAN-TYPE", line_number)
-    description = _required_text(_slice(record, 2, 50), "TRAN-TYPE-DESC", line_number)
-    filler = _optional_text(_slice(record, 52, 8))
+    record = prepare_fixed_width_record(
+        line,
+        record_width=TRANSACTION_TYPE_RECORD_WIDTH,
+        line_number=line_number,
+        error_type=TransactionReferenceParseError,
+    )
+    transaction_type_code = required_text(
+        slice_field(record, 0, 2),
+        field_name="TRAN-TYPE",
+        line_number=line_number,
+        error_type=TransactionReferenceParseError,
+    )
+    description = required_text(
+        slice_field(record, 2, 50),
+        field_name="TRAN-TYPE-DESC",
+        line_number=line_number,
+        error_type=TransactionReferenceParseError,
+    )
+    filler = optional_text(slice_field(record, 52, 8))
 
     return TransactionTypeRecord(
         transaction_type_code=transaction_type_code,
@@ -183,21 +192,31 @@ def parse_transaction_category_record(
     line_number: int = 1,
 ) -> TransactionCategoryRecord:
     """Parse one `trancatg.txt` line into the canonical transaction-category model."""
-    if len(line) > TRANSACTION_CATEGORY_RECORD_WIDTH:
-        raise TransactionReferenceParseError(
-            f"Line {line_number}: expected at most {TRANSACTION_CATEGORY_RECORD_WIDTH} characters, "
-            f"received {len(line)}."
-        )
-
-    record = line.ljust(TRANSACTION_CATEGORY_RECORD_WIDTH)
-    transaction_type_code = _required_text(_slice(record, 0, 2), "TRAN-TYPE-CD", line_number)
-    transaction_category_code = _required_digits(
-        _slice(record, 2, 4),
-        "TRAN-CAT-CD",
-        line_number,
+    record = prepare_fixed_width_record(
+        line,
+        record_width=TRANSACTION_CATEGORY_RECORD_WIDTH,
+        line_number=line_number,
+        error_type=TransactionReferenceParseError,
     )
-    description = _required_text(_slice(record, 6, 50), "TRAN-CAT-TYPE-DESC", line_number)
-    filler = _optional_text(_slice(record, 56, 4))
+    transaction_type_code = required_text(
+        slice_field(record, 0, 2),
+        field_name="TRAN-TYPE-CD",
+        line_number=line_number,
+        error_type=TransactionReferenceParseError,
+    )
+    transaction_category_code = required_digits(
+        slice_field(record, 2, 4),
+        field_name="TRAN-CAT-CD",
+        line_number=line_number,
+        error_type=TransactionReferenceParseError,
+    )
+    description = required_text(
+        slice_field(record, 6, 50),
+        field_name="TRAN-CAT-TYPE-DESC",
+        line_number=line_number,
+        error_type=TransactionReferenceParseError,
+    )
+    filler = optional_text(slice_field(record, 56, 4))
 
     return TransactionCategoryRecord(
         transaction_type_code=transaction_type_code,
@@ -205,55 +224,3 @@ def parse_transaction_category_record(
         description=description,
         filler=filler,
     )
-
-
-def _slice(record: str, start: int, length: int) -> str:
-    return record[start : start + length]
-
-
-def _required_text(value: str, field_name: str, line_number: int) -> str:
-    normalized = value.rstrip()
-    if normalized == "":
-        raise TransactionReferenceParseError(f"Line {line_number}: {field_name} is blank.")
-    return normalized
-
-
-def _optional_text(value: str) -> str | None:
-    normalized = value.rstrip()
-    return normalized or None
-
-
-def _required_digits(value: str, field_name: str, line_number: int) -> str:
-    normalized = _required_text(value, field_name, line_number)
-    if not normalized.isdigit():
-        raise TransactionReferenceParseError(
-            f"Line {line_number}: {field_name} must contain only digits, received {normalized!r}."
-        )
-    return normalized
-
-
-def _required_signed_amount(value: str, field_name: str, line_number: int) -> Decimal:
-    normalized = _required_text(value, field_name, line_number)
-    sign, unsigned_digits = _decode_signed_amount(normalized, field_name, line_number)
-    amount = Decimal(unsigned_digits[:-2] or "0") + (Decimal(unsigned_digits[-2:]) / Decimal("100"))
-    return amount if sign > 0 else amount.copy_negate()
-
-
-def _decode_signed_amount(value: str, field_name: str, line_number: int) -> tuple[int, str]:
-    prefix = value[:-1]
-    suffix = value[-1]
-    if not prefix.isdigit():
-        raise TransactionReferenceParseError(
-            f"Line {line_number}: {field_name} must contain digits before the signed suffix, "
-            f"received {value!r}."
-        )
-
-    try:
-        last_digit, sign = _COBOL_SIGNED_DIGIT_MAP[suffix]
-    except KeyError as error:
-        raise TransactionReferenceParseError(
-            f"Line {line_number}: {field_name} has unsupported signed-digit suffix {suffix!r} "
-            f"in {value!r}."
-        ) from error
-
-    return sign, prefix + last_digit

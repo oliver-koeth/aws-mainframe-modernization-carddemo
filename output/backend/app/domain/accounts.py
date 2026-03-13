@@ -8,33 +8,20 @@ from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.fixed_width import (
+    optional_text,
+    prepare_fixed_width_record,
+    required_date,
+    required_digits,
+    required_signed_amount,
+    required_text,
+    slice_field,
+)
+
 
 ACCOUNT_RECORD_WIDTH = 300
 CARD_RECORD_WIDTH = 150
 CARD_ACCOUNT_XREF_RECORD_WIDTH = 50
-
-_COBOL_SIGNED_DIGIT_MAP: dict[str, tuple[str, int]] = {
-    "{": ("0", 1),
-    "A": ("1", 1),
-    "B": ("2", 1),
-    "C": ("3", 1),
-    "D": ("4", 1),
-    "E": ("5", 1),
-    "F": ("6", 1),
-    "G": ("7", 1),
-    "H": ("8", 1),
-    "I": ("9", 1),
-    "}": ("0", -1),
-    "J": ("1", -1),
-    "K": ("2", -1),
-    "L": ("3", -1),
-    "M": ("4", -1),
-    "N": ("5", -1),
-    "O": ("6", -1),
-    "P": ("7", -1),
-    "Q": ("8", -1),
-    "R": ("9", -1),
-}
 
 
 class AccountCardParseError(ValueError):
@@ -102,46 +89,95 @@ class CardAccountXrefRecord(BaseModel):
 
 def parse_account_record(line: str, *, line_number: int = 1) -> AccountRecord:
     """Parse one `acctdata.txt` line into the canonical account model."""
-    if len(line) > ACCOUNT_RECORD_WIDTH:
-        raise AccountCardParseError(
-            f"Line {line_number}: expected at most {ACCOUNT_RECORD_WIDTH} characters, "
-            f"received {len(line)}."
-        )
-
-    record = line.ljust(ACCOUNT_RECORD_WIDTH)
-    account_id = _required_digits(_slice(record, 0, 11), "ACCT-ID", line_number)
-    active_status_code = _required_text(_slice(record, 11, 1), "ACCT-ACTIVE-STATUS", line_number)
-    current_balance = _required_signed_amount(
-        _slice(record, 12, 12),
-        "ACCT-CURR-BAL",
-        line_number,
+    record = prepare_fixed_width_record(
+        line,
+        record_width=ACCOUNT_RECORD_WIDTH,
+        line_number=line_number,
+        error_type=AccountCardParseError,
     )
-    credit_limit = _required_signed_amount(
-        _slice(record, 24, 12),
-        "ACCT-CREDIT-LIMIT",
-        line_number,
+    account_id = required_digits(
+        slice_field(record, 0, 11),
+        field_name="ACCT-ID",
+        line_number=line_number,
+        error_type=AccountCardParseError,
     )
-    cash_credit_limit = _required_signed_amount(
-        _slice(record, 36, 12),
-        "ACCT-CASH-CREDIT-LIMIT",
-        line_number,
+    active_status_code = required_text(
+        slice_field(record, 11, 1),
+        field_name="ACCT-ACTIVE-STATUS",
+        line_number=line_number,
+        error_type=AccountCardParseError,
     )
-    open_date = _required_date(_slice(record, 48, 10), "ACCT-OPEN-DATE", line_number)
-    expiration_date = _required_date(_slice(record, 58, 10), "ACCT-EXPIRAION-DATE", line_number)
-    reissue_date = _required_date(_slice(record, 68, 10), "ACCT-REISSUE-DATE", line_number)
-    current_cycle_credit = _required_signed_amount(
-        _slice(record, 78, 12),
-        "ACCT-CURR-CYC-CREDIT",
-        line_number,
+    current_balance = required_signed_amount(
+        slice_field(record, 12, 12),
+        field_name="ACCT-CURR-BAL",
+        line_number=line_number,
+        error_type=AccountCardParseError,
+        expected_width=12,
+        allow_unsigned_final_digit=True,
+        prefix_error_detail="must contain only digits before the sign nibble",
     )
-    current_cycle_debit = _required_signed_amount(
-        _slice(record, 90, 12),
-        "ACCT-CURR-CYC-DEBIT",
-        line_number,
+    credit_limit = required_signed_amount(
+        slice_field(record, 24, 12),
+        field_name="ACCT-CREDIT-LIMIT",
+        line_number=line_number,
+        error_type=AccountCardParseError,
+        expected_width=12,
+        allow_unsigned_final_digit=True,
+        prefix_error_detail="must contain only digits before the sign nibble",
     )
-    billing_postal_code = _required_text(_slice(record, 102, 10), "ACCT-ADDR-ZIP", line_number)
-    group_id = _optional_text(_slice(record, 112, 10))
-    filler = _optional_text(_slice(record, 122, 178))
+    cash_credit_limit = required_signed_amount(
+        slice_field(record, 36, 12),
+        field_name="ACCT-CASH-CREDIT-LIMIT",
+        line_number=line_number,
+        error_type=AccountCardParseError,
+        expected_width=12,
+        allow_unsigned_final_digit=True,
+        prefix_error_detail="must contain only digits before the sign nibble",
+    )
+    open_date = required_date(
+        slice_field(record, 48, 10),
+        field_name="ACCT-OPEN-DATE",
+        line_number=line_number,
+        error_type=AccountCardParseError,
+    )
+    expiration_date = required_date(
+        slice_field(record, 58, 10),
+        field_name="ACCT-EXPIRAION-DATE",
+        line_number=line_number,
+        error_type=AccountCardParseError,
+    )
+    reissue_date = required_date(
+        slice_field(record, 68, 10),
+        field_name="ACCT-REISSUE-DATE",
+        line_number=line_number,
+        error_type=AccountCardParseError,
+    )
+    current_cycle_credit = required_signed_amount(
+        slice_field(record, 78, 12),
+        field_name="ACCT-CURR-CYC-CREDIT",
+        line_number=line_number,
+        error_type=AccountCardParseError,
+        expected_width=12,
+        allow_unsigned_final_digit=True,
+        prefix_error_detail="must contain only digits before the sign nibble",
+    )
+    current_cycle_debit = required_signed_amount(
+        slice_field(record, 90, 12),
+        field_name="ACCT-CURR-CYC-DEBIT",
+        line_number=line_number,
+        error_type=AccountCardParseError,
+        expected_width=12,
+        allow_unsigned_final_digit=True,
+        prefix_error_detail="must contain only digits before the sign nibble",
+    )
+    billing_postal_code = required_text(
+        slice_field(record, 102, 10),
+        field_name="ACCT-ADDR-ZIP",
+        line_number=line_number,
+        error_type=AccountCardParseError,
+    )
+    group_id = optional_text(slice_field(record, 112, 10))
+    filler = optional_text(slice_field(record, 122, 178))
 
     active_status = _account_status_from_code(active_status_code, line_number)
 
@@ -165,20 +201,49 @@ def parse_account_record(line: str, *, line_number: int = 1) -> AccountRecord:
 
 def parse_card_record(line: str, *, line_number: int = 1) -> CardRecord:
     """Parse one `carddata.txt` line into the canonical card model."""
-    if len(line) > CARD_RECORD_WIDTH:
-        raise AccountCardParseError(
-            f"Line {line_number}: expected at most {CARD_RECORD_WIDTH} characters, "
-            f"received {len(line)}."
-        )
-
-    record = line.ljust(CARD_RECORD_WIDTH)
-    card_number = _required_digits(_slice(record, 0, 16), "CARD-NUM", line_number)
-    account_id = _required_digits(_slice(record, 16, 11), "CARD-ACCT-ID", line_number)
-    cvv_code = _required_digits(_slice(record, 27, 3), "CARD-CVV-CD", line_number)
-    embossed_name = _required_text(_slice(record, 30, 50), "CARD-EMBOSSED-NAME", line_number)
-    expiration_date = _required_date(_slice(record, 80, 10), "CARD-EXPIRAION-DATE", line_number)
-    active_status_code = _required_text(_slice(record, 90, 1), "CARD-ACTIVE-STATUS", line_number)
-    filler = _optional_text(_slice(record, 91, 59))
+    record = prepare_fixed_width_record(
+        line,
+        record_width=CARD_RECORD_WIDTH,
+        line_number=line_number,
+        error_type=AccountCardParseError,
+    )
+    card_number = required_digits(
+        slice_field(record, 0, 16),
+        field_name="CARD-NUM",
+        line_number=line_number,
+        error_type=AccountCardParseError,
+    )
+    account_id = required_digits(
+        slice_field(record, 16, 11),
+        field_name="CARD-ACCT-ID",
+        line_number=line_number,
+        error_type=AccountCardParseError,
+    )
+    cvv_code = required_digits(
+        slice_field(record, 27, 3),
+        field_name="CARD-CVV-CD",
+        line_number=line_number,
+        error_type=AccountCardParseError,
+    )
+    embossed_name = required_text(
+        slice_field(record, 30, 50),
+        field_name="CARD-EMBOSSED-NAME",
+        line_number=line_number,
+        error_type=AccountCardParseError,
+    )
+    expiration_date = required_date(
+        slice_field(record, 80, 10),
+        field_name="CARD-EXPIRAION-DATE",
+        line_number=line_number,
+        error_type=AccountCardParseError,
+    )
+    active_status_code = required_text(
+        slice_field(record, 90, 1),
+        field_name="CARD-ACTIVE-STATUS",
+        line_number=line_number,
+        error_type=AccountCardParseError,
+    )
+    filler = optional_text(slice_field(record, 91, 59))
 
     active_status = _card_status_from_code(active_status_code, line_number)
 
@@ -200,17 +265,31 @@ def parse_card_account_xref_record(
     line_number: int = 1,
 ) -> CardAccountXrefRecord:
     """Parse one `cardxref.txt` line into the canonical card-account xref model."""
-    if len(line) > CARD_ACCOUNT_XREF_RECORD_WIDTH:
-        raise AccountCardParseError(
-            f"Line {line_number}: expected at most {CARD_ACCOUNT_XREF_RECORD_WIDTH} characters, "
-            f"received {len(line)}."
-        )
-
-    record = line.ljust(CARD_ACCOUNT_XREF_RECORD_WIDTH)
-    card_number = _required_digits(_slice(record, 0, 16), "XREF-CARD-NUM", line_number)
-    customer_id = _required_digits(_slice(record, 16, 9), "XREF-CUST-ID", line_number)
-    account_id = _required_digits(_slice(record, 25, 11), "XREF-ACCT-ID", line_number)
-    filler = _optional_text(_slice(record, 36, 14))
+    record = prepare_fixed_width_record(
+        line,
+        record_width=CARD_ACCOUNT_XREF_RECORD_WIDTH,
+        line_number=line_number,
+        error_type=AccountCardParseError,
+    )
+    card_number = required_digits(
+        slice_field(record, 0, 16),
+        field_name="XREF-CARD-NUM",
+        line_number=line_number,
+        error_type=AccountCardParseError,
+    )
+    customer_id = required_digits(
+        slice_field(record, 16, 9),
+        field_name="XREF-CUST-ID",
+        line_number=line_number,
+        error_type=AccountCardParseError,
+    )
+    account_id = required_digits(
+        slice_field(record, 25, 11),
+        field_name="XREF-ACCT-ID",
+        line_number=line_number,
+        error_type=AccountCardParseError,
+    )
+    filler = optional_text(slice_field(record, 36, 14))
 
     return CardAccountXrefRecord(
         card_number=card_number,
@@ -218,74 +297,6 @@ def parse_card_account_xref_record(
         account_id=account_id,
         filler=filler,
     )
-
-
-def _slice(record: str, start: int, length: int) -> str:
-    return record[start : start + length]
-
-
-def _required_text(value: str, field_name: str, line_number: int) -> str:
-    normalized = value.rstrip()
-    if normalized == "":
-        raise AccountCardParseError(f"Line {line_number}: {field_name} is blank.")
-    return normalized
-
-
-def _optional_text(value: str) -> str | None:
-    normalized = value.rstrip()
-    return normalized or None
-
-
-def _required_digits(value: str, field_name: str, line_number: int) -> str:
-    normalized = _required_text(value, field_name, line_number)
-    if not normalized.isdigit():
-        raise AccountCardParseError(
-            f"Line {line_number}: {field_name} must contain only digits, received {normalized!r}."
-        )
-    return normalized
-
-
-def _required_date(value: str, field_name: str, line_number: int) -> date:
-    normalized = _required_text(value, field_name, line_number)
-    try:
-        return date.fromisoformat(normalized)
-    except ValueError as error:
-        raise AccountCardParseError(
-            f"Line {line_number}: {field_name} must be YYYY-MM-DD, received {normalized!r}."
-        ) from error
-
-
-def _required_signed_amount(value: str, field_name: str, line_number: int) -> Decimal:
-    normalized = _required_text(value, field_name, line_number)
-    if len(normalized) != 12:
-        raise AccountCardParseError(
-            f"Line {line_number}: {field_name} must be 12 characters wide, "
-            f"received {len(normalized)}."
-        )
-    if not normalized[:-1].isdigit():
-        raise AccountCardParseError(
-            f"Line {line_number}: {field_name} must contain only digits before the sign nibble, "
-            f"received {normalized!r}."
-        )
-
-    final_char = normalized[-1]
-    if final_char.isdigit():
-        digits = normalized
-        sign = 1
-    else:
-        try:
-            signed_digit, sign = _COBOL_SIGNED_DIGIT_MAP[final_char]
-        except KeyError as error:
-            raise AccountCardParseError(
-                f"Line {line_number}: {field_name} has unsupported signed-digit suffix "
-                f"{final_char!r} in {normalized!r}."
-            ) from error
-        digits = f"{normalized[:-1]}{signed_digit}"
-
-    amount = Decimal(digits).scaleb(-2)
-    return amount if sign > 0 else -amount
-
-
 def _account_status_from_code(value: str, line_number: int) -> AccountActiveStatus:
     if value != AccountActiveStatus.ACTIVE:
         raise AccountCardParseError(

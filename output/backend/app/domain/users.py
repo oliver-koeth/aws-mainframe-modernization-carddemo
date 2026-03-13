@@ -6,6 +6,7 @@ from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.fixed_width import optional_text, prepare_fixed_width_record, required_text, slice_field
 
 USER_SECURITY_RECORD_WIDTH = 80
 
@@ -45,19 +46,43 @@ class UserSecurityRecord(BaseModel):
 
 def parse_user_security_record(line: str, *, line_number: int = 1) -> UserSecurityRecord:
     """Parse one `usrsec.dat` line into the canonical user-security model."""
-    if len(line) > USER_SECURITY_RECORD_WIDTH:
-        raise UserSecurityParseError(
-            f"Line {line_number}: expected at most {USER_SECURITY_RECORD_WIDTH} characters, "
-            f"received {len(line)}."
-        )
-
-    record = line.ljust(USER_SECURITY_RECORD_WIDTH)
-    user_id = _required_text(_slice(record, 0, 8), "SEC-USR-ID", line_number)
-    first_name = _required_text(_slice(record, 8, 20), "SEC-USR-FNAME", line_number)
-    last_name = _required_text(_slice(record, 28, 20), "SEC-USR-LNAME", line_number)
-    password = _required_text(_slice(record, 48, 8), "SEC-USR-PWD", line_number)
-    user_type_code = _required_text(_slice(record, 56, 1), "SEC-USR-TYPE", line_number)
-    filler = _optional_text(_slice(record, 57, 23))
+    record = prepare_fixed_width_record(
+        line,
+        record_width=USER_SECURITY_RECORD_WIDTH,
+        line_number=line_number,
+        error_type=UserSecurityParseError,
+    )
+    user_id = required_text(
+        slice_field(record, 0, 8),
+        field_name="SEC-USR-ID",
+        line_number=line_number,
+        error_type=UserSecurityParseError,
+    )
+    first_name = required_text(
+        slice_field(record, 8, 20),
+        field_name="SEC-USR-FNAME",
+        line_number=line_number,
+        error_type=UserSecurityParseError,
+    )
+    last_name = required_text(
+        slice_field(record, 28, 20),
+        field_name="SEC-USR-LNAME",
+        line_number=line_number,
+        error_type=UserSecurityParseError,
+    )
+    password = required_text(
+        slice_field(record, 48, 8),
+        field_name="SEC-USR-PWD",
+        line_number=line_number,
+        error_type=UserSecurityParseError,
+    )
+    user_type_code = required_text(
+        slice_field(record, 56, 1),
+        field_name="SEC-USR-TYPE",
+        line_number=line_number,
+        error_type=UserSecurityParseError,
+    )
+    filler = optional_text(slice_field(record, 57, 23))
 
     try:
         role = _role_from_code(user_type_code)
@@ -74,24 +99,6 @@ def parse_user_security_record(line: str, *, line_number: int = 1) -> UserSecuri
         user_type_code=user_type_code,
         filler=filler,
     )
-
-
-def _slice(record: str, start: int, length: int) -> str:
-    return record[start : start + length]
-
-
-def _required_text(value: str, field_name: str, line_number: int) -> str:
-    normalized = value.rstrip()
-    if normalized == "":
-        raise UserSecurityParseError(f"Line {line_number}: {field_name} is blank.")
-    return normalized
-
-
-def _optional_text(value: str) -> str | None:
-    normalized = value.rstrip()
-    return normalized or None
-
-
 def _role_from_code(user_type_code: str) -> UserRole:
     return {
         "A": UserRole.ADMIN,

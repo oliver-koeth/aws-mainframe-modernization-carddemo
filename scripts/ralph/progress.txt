@@ -2,6 +2,7 @@
 ## Codebase Patterns
 - For flat-file modernization stories, document both `app/data/ASCII.seed` bootstrap sources and `app/data/ASCII` runtime-managed files; `init_gnucobol_data.sh` and `reset_gnucobol_data.sh` create or reset operational files like `dateparm.txt`, `dailytran_pending.txt`, and `tranrept_requests.txt` even when those files do not have seed counterparts.
 - The authoritative `store.json` root contract lives in `output/backend/app/models.py` `default_store_document()` and is enforced by `output/backend/app/storage.py`; future stories should add fields inside declared collections or bump schema version intentionally instead of reshaping the root object ad hoc.
+- Copybook-backed parsers under `output/backend/app/domain` should reuse `output/backend/app/fixed_width.py` for width validation, field slicing, text normalization, and signed-zoned-decimal decoding; keep record-family modules focused on field mapping and domain-specific code validation.
 - GNUCobol `LINE SEQUENTIAL` flat files can be physically shorter than their copybook width because trailing spaces are dropped on disk; parsers should right-pad to the logical copybook width before field slicing and then validate required fields explicitly.
 - Preserve leading-zero numeric identifiers from copybooks, such as customer IDs and SSNs, as strings in canonical JSON models unless the runtime semantics require arithmetic.
 - Display-form `PIC S9(...)V99` flat-file amounts use a trailing overpunch character for both sign and final digit; decode that suffix before normalizing account or transaction money fields to `Decimal`.
@@ -102,4 +103,15 @@ Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scri
   - Use `output/docs/record-layouts.md` for cross-entity traceability and relationship summaries; keep deeper field-by-field rules in the record-family documents so later stories can update one summary table without duplicating every field table.
   - Explicitly call out JSON-only operational contracts like job telemetry alongside copybook-backed entities, because they are part of the Phase 1 store contract even without a legacy flat-file source.
   - Deferred copybook layouts such as `CVTRA07Y` should stay visible in the consolidated documentation instead of disappearing until a parser or renderer is implemented.
+---
+## 2026-03-13 16:29:21 CET - US-009
+Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scripts/ralph/.codex-last-message-iter-9.txt
+- Added `output/backend/app/fixed_width.py` as the shared fixed-width parsing layer for right-padding line-sequential rows, slicing fields, coercing text/numeric/date values, and decoding COBOL signed-zoned-decimal amounts with configurable error wording.
+- Refactored the existing user, customer, account, transaction-reference, and transaction-activity parsers to use the shared helpers instead of duplicating width checks and conversion logic in each domain module.
+- Added direct unit coverage for the shared helpers in `output/backend/tests/test_fixed_width.py` and re-verified backend quality gates with `.venv/bin/python -c "import app.main"`, `.venv/bin/python -m mypy app`, and `.venv/bin/python -m pytest` from `output/backend`.
+- Files changed: `AGENTS.md`, `output/backend/app/domain/accounts.py`, `output/backend/app/domain/customers.py`, `output/backend/app/domain/transactions_activity.py`, `output/backend/app/domain/transactions_reference.py`, `output/backend/app/domain/users.py`, `output/backend/app/fixed_width.py`, `output/backend/tests/test_fixed_width.py`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - Keep fixed-width parsing helpers parameterized by record-family error type and message wording so shared infrastructure does not force every parser to expose the same legacy field names or diagnostics.
+  - Account money fields are the current exception that allow an unsigned trailing digit in addition to signed overpunch suffixes; later money parsers should opt into that behavior explicitly rather than assuming it globally.
+  - Primitive-level tests are useful for width and conversion semantics that are shared across record families; keep record-family tests focused on field mapping and business-code validation.
 ---

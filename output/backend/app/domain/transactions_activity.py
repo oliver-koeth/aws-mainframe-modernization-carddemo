@@ -9,33 +9,23 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.fixed_width import (
+    optional_datetime,
+    optional_text,
+    prepare_fixed_width_record,
+    required_compact_datetime,
+    required_date,
+    required_datetime,
+    required_digits,
+    required_signed_amount,
+    required_text,
+    slice_field,
+)
+
 
 TRANSACTION_RECORD_WIDTH = 350
 TRANSACTION_REPORT_DETAIL_WIDTH = 115
 REPORT_REQUEST_FIELD_COUNT = 5
-
-_COBOL_SIGNED_DIGIT_MAP: dict[str, tuple[str, int]] = {
-    "{": ("0", 1),
-    "A": ("1", 1),
-    "B": ("2", 1),
-    "C": ("3", 1),
-    "D": ("4", 1),
-    "E": ("5", 1),
-    "F": ("6", 1),
-    "G": ("7", 1),
-    "H": ("8", 1),
-    "I": ("9", 1),
-    "}": ("0", -1),
-    "J": ("1", -1),
-    "K": ("2", -1),
-    "L": ("3", -1),
-    "M": ("4", -1),
-    "N": ("5", -1),
-    "O": ("6", -1),
-    "P": ("7", -1),
-    "Q": ("8", -1),
-    "R": ("9", -1),
-}
 
 
 class TransactionActivityParseError(ValueError):
@@ -144,27 +134,91 @@ class JobRunDetailRecord(BaseModel):
 
 def parse_transaction_record(line: str, *, line_number: int = 1) -> TransactionRecord:
     """Parse one `dailytran.txt`/`CVTRA05Y` line into the canonical transaction model."""
-    if len(line) > TRANSACTION_RECORD_WIDTH:
-        raise TransactionActivityParseError(
-            f"Line {line_number}: expected at most {TRANSACTION_RECORD_WIDTH} characters, "
-            f"received {len(line)}."
-        )
-
-    record = line.ljust(TRANSACTION_RECORD_WIDTH)
-    transaction_id = _required_text(_slice(record, 0, 16), "TRAN-ID", line_number)
-    transaction_type_code = _required_text(_slice(record, 16, 2), "TRAN-TYPE-CD", line_number)
-    transaction_category_code = _required_digits(_slice(record, 18, 4), "TRAN-CAT-CD", line_number)
-    source = _required_text(_slice(record, 22, 10), "TRAN-SOURCE", line_number)
-    description = _required_text(_slice(record, 32, 100), "TRAN-DESC", line_number)
-    amount = _required_signed_amount(_slice(record, 132, 11), "TRAN-AMT", line_number)
-    merchant_id = _required_digits(_slice(record, 143, 9), "TRAN-MERCHANT-ID", line_number)
-    merchant_name = _required_text(_slice(record, 152, 50), "TRAN-MERCHANT-NAME", line_number)
-    merchant_city = _required_text(_slice(record, 202, 50), "TRAN-MERCHANT-CITY", line_number)
-    merchant_postal_code = _required_text(_slice(record, 252, 10), "TRAN-MERCHANT-ZIP", line_number)
-    card_number = _required_digits(_slice(record, 262, 16), "TRAN-CARD-NUM", line_number)
-    originated_at = _required_datetime(_slice(record, 278, 26), "TRAN-ORIG-TS", line_number)
-    processed_at = _optional_datetime(_slice(record, 304, 26), "TRAN-PROC-TS", line_number)
-    filler = _optional_text(_slice(record, 330, 20))
+    record = prepare_fixed_width_record(
+        line,
+        record_width=TRANSACTION_RECORD_WIDTH,
+        line_number=line_number,
+        error_type=TransactionActivityParseError,
+    )
+    transaction_id = required_text(
+        slice_field(record, 0, 16),
+        field_name="TRAN-ID",
+        line_number=line_number,
+        error_type=TransactionActivityParseError,
+    )
+    transaction_type_code = required_text(
+        slice_field(record, 16, 2),
+        field_name="TRAN-TYPE-CD",
+        line_number=line_number,
+        error_type=TransactionActivityParseError,
+    )
+    transaction_category_code = required_digits(
+        slice_field(record, 18, 4),
+        field_name="TRAN-CAT-CD",
+        line_number=line_number,
+        error_type=TransactionActivityParseError,
+    )
+    source = required_text(
+        slice_field(record, 22, 10),
+        field_name="TRAN-SOURCE",
+        line_number=line_number,
+        error_type=TransactionActivityParseError,
+    )
+    description = required_text(
+        slice_field(record, 32, 100),
+        field_name="TRAN-DESC",
+        line_number=line_number,
+        error_type=TransactionActivityParseError,
+    )
+    amount = required_signed_amount(
+        slice_field(record, 132, 11),
+        field_name="TRAN-AMT",
+        line_number=line_number,
+        error_type=TransactionActivityParseError,
+    )
+    merchant_id = required_digits(
+        slice_field(record, 143, 9),
+        field_name="TRAN-MERCHANT-ID",
+        line_number=line_number,
+        error_type=TransactionActivityParseError,
+    )
+    merchant_name = required_text(
+        slice_field(record, 152, 50),
+        field_name="TRAN-MERCHANT-NAME",
+        line_number=line_number,
+        error_type=TransactionActivityParseError,
+    )
+    merchant_city = required_text(
+        slice_field(record, 202, 50),
+        field_name="TRAN-MERCHANT-CITY",
+        line_number=line_number,
+        error_type=TransactionActivityParseError,
+    )
+    merchant_postal_code = required_text(
+        slice_field(record, 252, 10),
+        field_name="TRAN-MERCHANT-ZIP",
+        line_number=line_number,
+        error_type=TransactionActivityParseError,
+    )
+    card_number = required_digits(
+        slice_field(record, 262, 16),
+        field_name="TRAN-CARD-NUM",
+        line_number=line_number,
+        error_type=TransactionActivityParseError,
+    )
+    originated_at = required_datetime(
+        slice_field(record, 278, 26),
+        field_name="TRAN-ORIG-TS",
+        line_number=line_number,
+        error_type=TransactionActivityParseError,
+    )
+    processed_at = optional_datetime(
+        slice_field(record, 304, 26),
+        field_name="TRAN-PROC-TS",
+        line_number=line_number,
+        error_type=TransactionActivityParseError,
+    )
+    filler = optional_text(slice_field(record, 330, 20))
 
     return TransactionRecord(
         transaction_id=transaction_id,
@@ -193,11 +247,31 @@ def parse_report_request_record(line: str, *, line_number: int = 1) -> ReportReq
             f"received {len(parts)}."
         )
 
-    requested_at = _required_compact_datetime(parts[0], "REQUEST-TIMESTAMP", line_number)
-    requested_by_user_id = _required_text(parts[1], "REQUEST-USER-ID", line_number)
+    requested_at = required_compact_datetime(
+        parts[0],
+        field_name="REQUEST-TIMESTAMP",
+        line_number=line_number,
+        error_type=TransactionActivityParseError,
+    )
+    requested_by_user_id = required_text(
+        parts[1],
+        field_name="REQUEST-USER-ID",
+        line_number=line_number,
+        error_type=TransactionActivityParseError,
+    )
     report_type = _report_type_from_name(parts[2], line_number)
-    start_date = _required_date(parts[3], "REQUEST-START-DATE", line_number)
-    end_date = _required_date(parts[4], "REQUEST-END-DATE", line_number)
+    start_date = required_date(
+        parts[3],
+        field_name="REQUEST-START-DATE",
+        line_number=line_number,
+        error_type=TransactionActivityParseError,
+    )
+    end_date = required_date(
+        parts[4],
+        field_name="REQUEST-END-DATE",
+        line_number=line_number,
+        error_type=TransactionActivityParseError,
+    )
     if start_date > end_date:
         raise TransactionActivityParseError(
             f"Line {line_number}: REQUEST-START-DATE must not be after REQUEST-END-DATE."
@@ -210,104 +284,13 @@ def parse_report_request_record(line: str, *, line_number: int = 1) -> ReportReq
         start_date=start_date,
         end_date=end_date,
     )
-
-
-def _slice(record: str, start: int, length: int) -> str:
-    return record[start : start + length]
-
-
-def _required_text(value: str, field_name: str, line_number: int) -> str:
-    normalized = value.rstrip()
-    if normalized == "":
-        raise TransactionActivityParseError(f"Line {line_number}: {field_name} is blank.")
-    return normalized
-
-
-def _optional_text(value: str) -> str | None:
-    normalized = value.rstrip()
-    return normalized or None
-
-
-def _required_digits(value: str, field_name: str, line_number: int) -> str:
-    normalized = _required_text(value, field_name, line_number)
-    if not normalized.isdigit():
-        raise TransactionActivityParseError(
-            f"Line {line_number}: {field_name} must contain only digits, received {normalized!r}."
-        )
-    return normalized
-
-
-def _required_date(value: str, field_name: str, line_number: int) -> date:
-    normalized = _required_text(value, field_name, line_number)
-    try:
-        return date.fromisoformat(normalized)
-    except ValueError as error:
-        raise TransactionActivityParseError(
-            f"Line {line_number}: {field_name} must be YYYY-MM-DD, received {normalized!r}."
-        ) from error
-
-
-def _required_datetime(value: str, field_name: str, line_number: int) -> datetime:
-    normalized = _required_text(value, field_name, line_number)
-    try:
-        return datetime.fromisoformat(normalized)
-    except ValueError as error:
-        raise TransactionActivityParseError(
-            f"Line {line_number}: {field_name} must be ISO timestamp text, received {normalized!r}."
-        ) from error
-
-
-def _optional_datetime(value: str, field_name: str, line_number: int) -> datetime | None:
-    normalized = value.rstrip()
-    if normalized == "":
-        return None
-    try:
-        return datetime.fromisoformat(normalized)
-    except ValueError as error:
-        raise TransactionActivityParseError(
-            f"Line {line_number}: {field_name} must be ISO timestamp text, received {normalized!r}."
-        ) from error
-
-
-def _required_compact_datetime(value: str, field_name: str, line_number: int) -> datetime:
-    normalized = _required_text(value, field_name, line_number)
-    try:
-        return datetime.strptime(normalized, "%Y-%m-%d %H:%M:%S")
-    except ValueError as error:
-        raise TransactionActivityParseError(
-            f"Line {line_number}: {field_name} must be YYYY-MM-DD HH:MM:SS, received {normalized!r}."
-        ) from error
-
-
-def _required_signed_amount(value: str, field_name: str, line_number: int) -> Decimal:
-    normalized = _required_text(value, field_name, line_number)
-    sign, unsigned_digits = _decode_signed_amount(normalized, field_name, line_number)
-    amount = Decimal(unsigned_digits[:-2] or "0") + (Decimal(unsigned_digits[-2:]) / Decimal("100"))
-    return amount if sign > 0 else amount.copy_negate()
-
-
-def _decode_signed_amount(value: str, field_name: str, line_number: int) -> tuple[int, str]:
-    prefix = value[:-1]
-    suffix = value[-1]
-    if not prefix.isdigit():
-        raise TransactionActivityParseError(
-            f"Line {line_number}: {field_name} must contain digits before the signed suffix, "
-            f"received {value!r}."
-        )
-
-    try:
-        last_digit, sign = _COBOL_SIGNED_DIGIT_MAP[suffix]
-    except KeyError as error:
-        raise TransactionActivityParseError(
-            f"Line {line_number}: {field_name} has unsupported signed-digit suffix {suffix!r} "
-            f"in {value!r}."
-        ) from error
-
-    return sign, prefix + last_digit
-
-
 def _report_type_from_name(value: str, line_number: int) -> ReportRequestType:
-    normalized = _required_text(value, "REQUEST-REPORT-NAME", line_number)
+    normalized = required_text(
+        value,
+        field_name="REQUEST-REPORT-NAME",
+        line_number=line_number,
+        error_type=TransactionActivityParseError,
+    )
     try:
         return ReportRequestType(normalized)
     except ValueError as error:
