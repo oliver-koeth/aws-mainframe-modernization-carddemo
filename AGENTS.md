@@ -130,6 +130,7 @@ If a story changes API or persistence behavior, include automated tests.
 - Treat `app/data/ASCII/tranrept_requests.txt` as a pipe-delimited runtime file written by `CORPT00C`, not a fixed-width copybook record; each line is `request_timestamp|user_id|report_name|start_date|end_date`, and the emitted report names are limited to `Monthly`, `Yearly`, and `Custom`.
 - Treat `output/backend/app/models.py` `default_store_document()` plus `output/backend/app/storage.py` `read_store`/`write_store` validation as the authoritative top-level `store.json` contract; extend record collections inside that envelope instead of changing root keys ad hoc.
 - For Phase 1 seed bootstrap work, use `output/backend/app/importing.py` `parse_lines_strict()` as the shared malformed-line strategy so import commands hard-fail with structured `SeedImportError.detail` diagnostics instead of inventing per-file quarantine formats.
+- Keep the canonical seed bootstrap entry point in `output/backend/app/seed_import.py`; extend its `SEED_SOURCES` mapping and shared storage write path instead of adding parallel one-off import scripts when new Phase 1 record families are imported.
 - Writes should be atomic.
 - Concurrency protection belongs in shared storage code, not duplicated per endpoint.
 

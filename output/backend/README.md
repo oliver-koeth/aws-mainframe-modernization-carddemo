@@ -37,6 +37,12 @@ Run the backend tests with:
 .venv/bin/python -m pytest
 ```
 
+Bootstrap the canonical JSON store from the shipped GNUCobol seed files with:
+
+```bash
+.venv/bin/python -m app.seed_import
+```
+
 The acceptance baseline for this scaffold is that `python -m mypy app` and `python -m pytest` both pass from `output/backend/`.
 
 ## Storage Conventions
@@ -90,6 +96,18 @@ The raised `SeedImportError` includes a structured `detail` payload with:
 - `reason`
 
 This is the canonical place to record malformed-line diagnostics for bootstrap and seed-import commands. Parsers continue to own field-level validation messages; import code wraps those parser errors with source-file context instead of quarantining or coercing bad rows.
+
+## Seed Bootstrap Workflow
+
+The canonical Phase 1 bootstrap command is `.venv/bin/python -m app.seed_import` from `output/backend/`. By default it:
+
+- reads the shipped fixed-width seed sources from `app/data/ASCII.seed`
+- parses them through the shared record-family parsers plus `app.importing.parse_lines_strict`
+- rewrites `output/backend/store.json` through `app.storage.write_store`
+
+Expected successful output is a one-line summary naming the target `store.json` path plus imported collection counts. `report_requests` and the `operations.*` collections remain present but empty until later stories import runtime-managed files and job telemetry.
+
+Use `--seed-dir`, `--store-path`, or `--schedules-path` only when testing against alternate fixtures or an isolated workspace.
 
 ## Frontend Integration
 
