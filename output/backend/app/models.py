@@ -10,6 +10,24 @@ from typing import TypedDict
 STORE_SCHEMA_NAME = "carddemo.store"
 STORE_SCHEMA_VERSION = 1
 SUPPORTED_STORE_SCHEMA_VERSIONS = frozenset({STORE_SCHEMA_VERSION})
+STORE_COLLECTION_NAMES = (
+    "users",
+    "customers",
+    "accounts",
+    "cards",
+    "card_account_xref",
+    "transaction_types",
+    "transaction_categories",
+    "disclosure_groups",
+    "category_balances",
+    "transactions",
+    "report_requests",
+)
+STORE_OPERATION_COLLECTION_NAMES = (
+    "sessions",
+    "job_runs",
+    "job_run_details",
+)
 
 
 class StoreMetadata(TypedDict):

@@ -110,6 +110,12 @@ The canonical Phase 1 bootstrap command is `.venv/bin/python -m app.seed_import`
 
 Expected successful output is a one-line summary naming the target `store.json` path plus imported collection counts. The `operations.*` collections remain present but empty because Phase 1 only defines their schema.
 
+An imported `store.json` is considered complete when it can be loaded immediately through `app.storage.read_store` with no manual edits and still contains:
+
+- the canonical `metadata` schema header
+- every declared Phase 1 top-level collection, even when a collection has zero shipped rows
+- the reserved empty operational collections under `operations.sessions`, `operations.job_runs`, and `operations.job_run_details`
+
 Use `--seed-dir`, `--runtime-data-dir`, `--store-path`, or `--schedules-path` only when testing against alternate fixtures or an isolated workspace.
 
 For the shipped identity/account bootstrap data, the importer currently requires these integrity rules:

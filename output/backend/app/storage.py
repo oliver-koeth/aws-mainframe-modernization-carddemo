@@ -14,6 +14,8 @@ from tempfile import NamedTemporaryFile
 from typing import Any, Iterator, TypeAlias, cast
 
 from app.models import (
+    STORE_COLLECTION_NAMES,
+    STORE_OPERATION_COLLECTION_NAMES,
     STORE_SCHEMA_NAME,
     SUPPORTED_STORE_SCHEMA_VERSIONS,
     StoragePaths,
@@ -223,20 +225,7 @@ def _validate_store_document(payload: object) -> StoreDocument:
             f"Unsupported store schema version: {schema_version!r}"
         )
 
-    top_level_collections = (
-        "users",
-        "customers",
-        "accounts",
-        "cards",
-        "card_account_xref",
-        "transaction_types",
-        "transaction_categories",
-        "disclosure_groups",
-        "category_balances",
-        "transactions",
-        "report_requests",
-    )
-    for collection_name in top_level_collections:
+    for collection_name in STORE_COLLECTION_NAMES:
         collection = payload.get(collection_name)
         if not isinstance(collection, list):
             raise StoreSchemaError(
@@ -247,7 +236,7 @@ def _validate_store_document(payload: object) -> StoreDocument:
     if not isinstance(operations, dict):
         raise StoreSchemaError("Store operations collection must be present")
 
-    for collection_name in ("sessions", "job_runs", "job_run_details"):
+    for collection_name in STORE_OPERATION_COLLECTION_NAMES:
         collection = operations.get(collection_name)
         if not isinstance(collection, list):
             raise StoreSchemaError(

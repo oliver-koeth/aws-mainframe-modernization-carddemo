@@ -3,7 +3,11 @@ from __future__ import annotations
 from datetime import date
 from pathlib import Path
 
-from app.models import default_store_document
+from app.models import (
+    STORE_COLLECTION_NAMES,
+    STORE_OPERATION_COLLECTION_NAMES,
+    default_store_document,
+)
 from app.seed_import import (
     REPORT_REQUESTS_FILENAME,
     SEED_SOURCES,
@@ -12,6 +16,7 @@ from app.seed_import import (
     default_runtime_data_directory,
     main,
 )
+from app.services import build_backend_state
 from app.storage import read_store
 
 
@@ -40,6 +45,52 @@ def test_bootstrap_store_populates_store_from_repo_seed_data(
         encoding="utf-8"
     ).splitlines()
     assert len(payload["report_requests"]) == len(runtime_lines)
+
+
+def test_bootstrap_store_preserves_complete_store_envelope(
+    storage_paths,
+) -> None:
+    seed_dir = Path(__file__).resolve().parents[3] / "app" / "data" / "ASCII.seed"
+    runtime_data_dir = default_runtime_data_directory()
+
+    payload = bootstrap_store(
+        seed_dir=seed_dir,
+        runtime_data_dir=runtime_data_dir,
+        storage_paths=storage_paths,
+    )
+
+    assert set(payload) == {
+        "metadata",
+        *STORE_COLLECTION_NAMES,
+        "operations",
+    }
+    assert payload["metadata"] == default_store_document()["metadata"]
+    for collection_name in STORE_COLLECTION_NAMES:
+        assert isinstance(payload[collection_name], list)
+
+    assert set(payload["operations"]) == set(STORE_OPERATION_COLLECTION_NAMES)
+    for collection_name in STORE_OPERATION_COLLECTION_NAMES:
+        assert payload["operations"][collection_name] == []
+
+
+def test_imported_store_loads_from_backend_state_without_manual_edits(
+    tmp_path,
+) -> None:
+    seed_dir = Path(__file__).resolve().parents[3] / "app" / "data" / "ASCII.seed"
+    runtime_data_dir = default_runtime_data_directory()
+    backend_root = tmp_path / "backend"
+    backend_root.mkdir()
+    state = build_backend_state(backend_root)
+
+    payload = bootstrap_store(
+        seed_dir=seed_dir,
+        runtime_data_dir=runtime_data_dir,
+        storage_paths=state.paths,
+    )
+
+    assert read_store(state.paths) == payload
+    assert state.paths.store.exists()
+    assert not state.paths.schedules.exists()
 
 
 def test_seed_import_main_supports_explicit_paths(

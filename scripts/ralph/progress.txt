@@ -3,6 +3,7 @@
 - For flat-file modernization stories, document both `app/data/ASCII.seed` bootstrap sources and `app/data/ASCII` runtime-managed files; `init_gnucobol_data.sh` and `reset_gnucobol_data.sh` create or reset operational files like `dateparm.txt`, `dailytran_pending.txt`, and `tranrept_requests.txt` even when those files do not have seed counterparts.
 - Runtime-managed imports still belong in `output/backend/app/seed_import.py`: read copybook-backed seed families from `app/data/ASCII.seed`, but source `tranrept_requests.txt` from `app/data/ASCII` and normalize a missing runtime log to an empty `report_requests` collection.
 - The authoritative `store.json` root contract lives in `output/backend/app/models.py` `default_store_document()` and is enforced by `output/backend/app/storage.py`; future stories should add fields inside declared collections or bump schema version intentionally instead of reshaping the root object ad hoc.
+- Keep `output/backend/app/models.py` `STORE_COLLECTION_NAMES` and `STORE_OPERATION_COLLECTION_NAMES` aligned with `default_store_document()` whenever `store.json` collections change; storage validation and bootstrap contract tests consume those constants as the canonical collection list.
 - Copybook-backed parsers under `output/backend/app/domain` should reuse `output/backend/app/fixed_width.py` for width validation, field slicing, text normalization, and signed-zoned-decimal decoding; keep record-family modules focused on field mapping and domain-specific code validation.
 - Seed/bootstrap commands should run file rows through `output/backend/app/importing.py` `parse_lines_strict()` so malformed data hard-fails consistently with `SeedImportError.detail` (`source_name`, `line_number`, `raw_line`, `reason`) instead of inventing per-file quarantine formats.
 - Extend Phase 1 seed bootstrap through `output/backend/app/seed_import.py` `SEED_SOURCES` and `bootstrap_store()` so every new imported record family shares the same CLI entry point, default repo seed directory, and `write_store()` persistence path.
@@ -166,4 +167,16 @@ Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scri
   - Phase 1 bootstrap can mix authoritative sources as long as the contract stays explicit: copybook-backed bootstrap data remains under `app/data/ASCII.seed`, while runtime-managed operational logs such as `tranrept_requests.txt` should come from `app/data/ASCII`.
   - Keep runtime-managed imports optional when reset scripts can leave a file empty or absent; normalizing that state to an empty collection is better than turning operational emptiness into a bootstrap failure.
   - Reference-data regression tests should assert both stable counts and composite-key joins so future seed edits fail fast when a code table drifts out of sync with dependent rows.
+---
+## 2026-03-13 17:18:01 CET - US-014
+Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scripts/ralph/.codex-last-message-iter-3.txt
+- Centralized the declared `store.json` collection names in backend model constants so the default store envelope and storage validation share one collection contract.
+- Added seed-import regression tests proving a freshly bootstrapped store keeps schema metadata, every required Phase 1 collection, empty operational collections, and can be loaded immediately through backend storage paths built from `app.services.build_backend_state()`.
+- Updated backend and repo agent docs to call out the complete-store expectation and the collection-constant sync point for future schema changes.
+- Verified `.venv/bin/python -c "import app.main"`, `.venv/bin/python -m mypy app`, `.venv/bin/python -m pytest`, and `.venv/bin/python -m app.seed_import` from `output/backend`.
+- Files changed: `AGENTS.md`, `output/backend/README.md`, `output/backend/app/models.py`, `output/backend/app/storage.py`, `output/backend/tests/test_seed_import.py`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - Treat `STORE_COLLECTION_NAMES` and `STORE_OPERATION_COLLECTION_NAMES` as the backend source of truth for required store collections; update them alongside `default_store_document()` whenever Phase 1 adds a new collection.
+  - Regression tests for store completeness are more maintainable when they assert envelope keys and backend loadability instead of duplicating full seed payload snapshots.
+  - `app.services.build_backend_state()` is the simplest way to verify that a bootstrapped store can be consumed from a fresh backend workspace without hand-editing paths or files.
 ---
