@@ -5,6 +5,7 @@
 - GNUCobol `LINE SEQUENTIAL` flat files can be physically shorter than their copybook width because trailing spaces are dropped on disk; parsers should right-pad to the logical copybook width before field slicing and then validate required fields explicitly.
 - Preserve leading-zero numeric identifiers from copybooks, such as customer IDs and SSNs, as strings in canonical JSON models unless the runtime semantics require arithmetic.
 - Display-form `PIC S9(...)V99` flat-file amounts use a trailing overpunch character for both sign and final digit; decode that suffix before normalizing account or transaction money fields to `Decimal`.
+- Transaction reference joins are composite: `CVTRA04Y` categories key on `transaction_type_code` + `transaction_category_code`, `CVTRA03Y` supplies the type lookup, `CVTRA01Y` category balances attach that pair to `account_id`, and `CVTRA02Y` disclosure groups attach the same pair to `account_group_id`.
 
 Started: Fri Mar 13 13:10:05 CET 2026
 ---
@@ -64,4 +65,16 @@ Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scri
   - `CVACT01Y` money fields are stored as display-form signed decimals, so the last character may be an overpunch such as `{` or `N` rather than a plain digit.
   - `ACCT-ADDR-ZIP` should stay a trimmed string, not a numeric ZIP model, because the shipped seed includes alphanumeric values like `A000000000`.
   - `carddata.txt` and `cardxref.txt` preserve leading-zero account and customer relationships exactly as strings; later import stories should join these records by string equality without numeric coercion.
+---
+## 2026-03-13 16:10:30 CET - US-006
+Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scripts/ralph/.codex-last-message-iter-5.txt
+- Added canonical Phase 1 transaction reference models and parsers for `CVTRA01Y` through `CVTRA04Y`, covering category balances, disclosure groups, transaction types, and transaction categories with deterministic fixed-width validation.
+- Added pytest coverage for shipped seed rows plus malformed-width, blank-field, non-digit, and invalid signed-overpunch failures across all four record families.
+- Documented record widths, JSON field mappings, composite keys, and cross-entity relationship rules in a dedicated transaction-reference record layout document.
+- Verified backend quality gates with `.venv/bin/python -c "import app.main"`, `.venv/bin/python -m mypy app`, and `.venv/bin/python -m pytest` from `output/backend`.
+- Files changed: `AGENTS.md`, `output/backend/app/domain/__init__.py`, `output/backend/app/domain/transactions_reference.py`, `output/backend/tests/test_transaction_reference.py`, `output/docs/transaction-reference-records.md`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - `CVTRA01Y` and `CVTRA02Y` both store signed zoned-decimal amounts with two fractional digits even though their field widths differ (`11` for category balances, `6` for disclosure-group rates).
+  - `CBACT04C` resolves disclosure-group interest by `AccountRecord.group_id` plus transaction type/category, not by account ID, so later import and service code should preserve the account group string exactly.
+  - `CBTRN03C` treats `trancatg.txt` keys as the six-character concatenation of transaction type and category code; later lookup services should preserve that composite-key semantics instead of inventing surrogate IDs.
 ---
