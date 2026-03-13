@@ -31,6 +31,7 @@ The GNUCobol flat-file runtime is authoritative for these records. `CVTRA05Y` an
 - Parse report-request lines with exactly five pipe-delimited fields in the `CORPT00C` order: timestamp, user ID, report name, start date, end date.
 - Support only `Monthly`, `Yearly`, and `Custom` report names because those are the only values `CORPT00C` emits.
 - Reject report requests whose start date is after the end date.
+- During Phase 1 bootstrap, import `tranrept_requests.txt` from `app/data/ASCII` rather than `app/data/ASCII.seed`. If the runtime log is missing or empty, normalize it to an empty `report_requests[]` collection.
 
 ## JSON Serialization Rules
 
@@ -38,3 +39,4 @@ The GNUCobol flat-file runtime is authoritative for these records. `CVTRA05Y` an
 - Serialize `date` values as `YYYY-MM-DD`.
 - Serialize `datetime` values as ISO 8601 strings without timezone offsets because the source flat files do not carry timezone information.
 - Persist job telemetry in `store.json` under `operations.job_runs` and `operations.job_run_details`; no separate telemetry file is introduced in Phase 1.
+- Preserve source fields that later slices do not yet consume, such as transaction filler text and disclosure/report metadata already represented in the canonical models, instead of silently dropping them during import.

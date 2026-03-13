@@ -1,6 +1,7 @@
 # Ralph Progress Log
 ## Codebase Patterns
 - For flat-file modernization stories, document both `app/data/ASCII.seed` bootstrap sources and `app/data/ASCII` runtime-managed files; `init_gnucobol_data.sh` and `reset_gnucobol_data.sh` create or reset operational files like `dateparm.txt`, `dailytran_pending.txt`, and `tranrept_requests.txt` even when those files do not have seed counterparts.
+- Runtime-managed imports still belong in `output/backend/app/seed_import.py`: read copybook-backed seed families from `app/data/ASCII.seed`, but source `tranrept_requests.txt` from `app/data/ASCII` and normalize a missing runtime log to an empty `report_requests` collection.
 - The authoritative `store.json` root contract lives in `output/backend/app/models.py` `default_store_document()` and is enforced by `output/backend/app/storage.py`; future stories should add fields inside declared collections or bump schema version intentionally instead of reshaping the root object ad hoc.
 - Copybook-backed parsers under `output/backend/app/domain` should reuse `output/backend/app/fixed_width.py` for width validation, field slicing, text normalization, and signed-zoned-decimal decoding; keep record-family modules focused on field mapping and domain-specific code validation.
 - Seed/bootstrap commands should run file rows through `output/backend/app/importing.py` `parse_lines_strict()` so malformed data hard-fails consistently with `SeedImportError.detail` (`source_name`, `line_number`, `raw_line`, `reason`) instead of inventing per-file quarantine formats.
@@ -153,4 +154,16 @@ Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scri
   - Seed-family parsers can validate record structure independently, but bootstrap still needs an explicit post-parse integrity pass for cross-file joins like card-to-account and xref-to-customer links.
   - Relationship regression tests are more stable when they assert collection counts plus join invariants directly from `bootstrap_store()` instead of hardcoding every imported record payload.
   - Keep referential failures deterministic and pre-persist; bootstrap should fail before `write_store()` rather than writing a partial or internally inconsistent `store.json`.
+---
+## 2026-03-13 17:14:55 CET - US-013
+Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scripts/ralph/.codex-last-message-iter-2.txt
+- Extended `output/backend/app/seed_import.py` so Phase 1 bootstrap still imports fixed-width reference datasets from `app/data/ASCII.seed`, but now also imports `report_requests` from the runtime-managed `app/data/ASCII/tranrept_requests.txt` log through the same strict parsing path.
+- Added a second referential-integrity pass for transaction reference, transaction activity, and report-request joins, covering transaction types, transaction categories, category balances, disclosure groups, transactions, and requesting users before `store.json` is rewritten.
+- Added pytest coverage for baseline reference/report-request counts, missing-runtime-log empty defaults, broken transaction-category joins, and unknown report-request users; updated backend/docs to describe the runtime import source and deterministic handling of fields not yet consumed by later slices.
+- Verified `.venv/bin/python -c "import app.main"`, `.venv/bin/python -m mypy app`, `.venv/bin/python -m pytest`, and `.venv/bin/python -m app.seed_import` from `output/backend`.
+- Files changed: `output/backend/README.md`, `output/backend/app/seed_import.py`, `output/backend/store.json`, `output/backend/tests/test_seed_import.py`, `output/docs/transaction-activity-records.md`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - Phase 1 bootstrap can mix authoritative sources as long as the contract stays explicit: copybook-backed bootstrap data remains under `app/data/ASCII.seed`, while runtime-managed operational logs such as `tranrept_requests.txt` should come from `app/data/ASCII`.
+  - Keep runtime-managed imports optional when reset scripts can leave a file empty or absent; normalizing that state to an empty collection is better than turning operational emptiness into a bootstrap failure.
+  - Reference-data regression tests should assert both stable counts and composite-key joins so future seed edits fail fast when a code table drifts out of sync with dependent rows.
 ---

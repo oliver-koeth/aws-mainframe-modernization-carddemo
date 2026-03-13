@@ -5530,7 +5530,24 @@
     "job_runs": [],
     "sessions": []
   },
-  "report_requests": [],
+  "report_requests": [
+    {
+      "end_date": {
+        "__type__": "date",
+        "value": "2026-03-10"
+      },
+      "report_type": "Custom",
+      "requested_at": {
+        "__type__": "datetime",
+        "value": "2026-03-10T16:50:02"
+      },
+      "requested_by_user_id": "USER0001",
+      "start_date": {
+        "__type__": "date",
+        "value": "2026-03-01"
+      }
+    }
+  ],
   "transaction_categories": [
     {
       "description": "Regular Sales Draft",

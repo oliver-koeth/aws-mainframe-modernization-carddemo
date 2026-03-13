@@ -102,13 +102,15 @@ This is the canonical place to record malformed-line diagnostics for bootstrap a
 The canonical Phase 1 bootstrap command is `.venv/bin/python -m app.seed_import` from `output/backend/`. By default it:
 
 - reads the shipped fixed-width seed sources from `app/data/ASCII.seed`
+- reads the runtime-managed `tranrept_requests.txt` log from `app/data/ASCII`
 - parses them through the shared record-family parsers plus `app.importing.parse_lines_strict`
-- validates the imported customer/account/card/card-xref collections for required cross-file joins before writing anything
+- treats a missing or empty `tranrept_requests.txt` file as an empty `report_requests[]` collection
+- validates the imported customer/account/card/card-xref collections plus transaction reference and report-request joins before writing anything
 - rewrites `output/backend/store.json` through `app.storage.write_store`
 
-Expected successful output is a one-line summary naming the target `store.json` path plus imported collection counts. `report_requests` and the `operations.*` collections remain present but empty until later stories import runtime-managed files and job telemetry.
+Expected successful output is a one-line summary naming the target `store.json` path plus imported collection counts. The `operations.*` collections remain present but empty because Phase 1 only defines their schema.
 
-Use `--seed-dir`, `--store-path`, or `--schedules-path` only when testing against alternate fixtures or an isolated workspace.
+Use `--seed-dir`, `--runtime-data-dir`, `--store-path`, or `--schedules-path` only when testing against alternate fixtures or an isolated workspace.
 
 For the shipped identity/account bootstrap data, the importer currently requires these integrity rules:
 
@@ -119,6 +121,16 @@ For the shipped identity/account bootstrap data, the importer currently requires
 - every `card_account_xref` row must agree with the matching `cards[].account_id`
 
 If any of those joins drift, `app.seed_import` fails with `SeedReferentialIntegrityError` and does not rewrite `store.json`.
+
+For the shipped transaction reference and reporting data, the importer also requires these integrity rules:
+
+- every `transaction_categories[].transaction_type_code` must exist in `transaction_types[]`
+- every `disclosure_groups[]`, `category_balances[]`, and `transactions[]` composite `(transaction_type_code, transaction_category_code)` pair must exist in `transaction_categories[]`
+- every `category_balances[].account_id` must exist in `accounts[]`
+- every `transactions[].card_number` must exist in `cards[]`
+- every `report_requests[].requested_by_user_id` must exist in `users[]`
+
+Phase 1 preserves imported values that are not yet used by APIs or UI, such as disclosure-group interest rates and transaction filler text, by carrying them into the canonical JSON models unchanged instead of dropping fields during bootstrap.
 
 ## Frontend Integration
 
