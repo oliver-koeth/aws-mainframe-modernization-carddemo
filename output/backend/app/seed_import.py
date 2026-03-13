@@ -36,6 +36,10 @@ class SeedSource:
     parser: LineParser[BaseModel]
 
 
+class SeedReferentialIntegrityError(ValueError):
+    """Raised when individually valid seed rows fail required cross-file joins."""
+
+
 SEED_SOURCES: tuple[SeedSource, ...] = (
     SeedSource("users", "usrsec.dat", parse_user_security_record),
     SeedSource("customers", "custdata.txt", parse_customer_record),
@@ -69,6 +73,7 @@ def bootstrap_store(*, seed_dir: Path, storage_paths: StoragePaths) -> StoreDocu
             records,
         )
 
+    validate_identity_account_seed_relationships(payload)
     write_store(storage_paths, payload)
     return payload
 
@@ -181,6 +186,89 @@ def _set_store_collection(
 ) -> None:
     """Write a top-level store collection through one typed helper."""
     cast(dict[str, Any], store)[collection_name] = records
+
+
+def validate_identity_account_seed_relationships(store: StoreDocument) -> None:
+    """Fail bootstrap when customer/account/card seed relationships drift."""
+    customer_ids = {
+        _required_string_field(record, "customer_id", collection_name="customers")
+        for record in store["customers"]
+    }
+    account_ids = {
+        _required_string_field(record, "account_id", collection_name="accounts")
+        for record in store["accounts"]
+    }
+    cards_by_number = {
+        _required_string_field(record, "card_number", collection_name="cards"): record
+        for record in store["cards"]
+    }
+
+    for record in store["cards"]:
+        account_id = _required_string_field(record, "account_id", collection_name="cards")
+        card_number = _required_string_field(record, "card_number", collection_name="cards")
+        if account_id not in account_ids:
+            raise SeedReferentialIntegrityError(
+                "cards references missing account_id "
+                f"{account_id!r} for card_number {card_number!r}."
+            )
+
+    for record in store["card_account_xref"]:
+        card_number = _required_string_field(
+            record,
+            "card_number",
+            collection_name="card_account_xref",
+        )
+        customer_id = _required_string_field(
+            record,
+            "customer_id",
+            collection_name="card_account_xref",
+        )
+        account_id = _required_string_field(
+            record,
+            "account_id",
+            collection_name="card_account_xref",
+        )
+        if customer_id not in customer_ids:
+            raise SeedReferentialIntegrityError(
+                "card_account_xref references missing customer_id "
+                f"{customer_id!r} for card_number {card_number!r}."
+            )
+        if account_id not in account_ids:
+            raise SeedReferentialIntegrityError(
+                "card_account_xref references missing account_id "
+                f"{account_id!r} for card_number {card_number!r}."
+            )
+        card = cards_by_number.get(card_number)
+        if card is None:
+            raise SeedReferentialIntegrityError(
+                "card_account_xref references missing card_number "
+                f"{card_number!r}."
+            )
+        card_account_id = _required_string_field(
+            card,
+            "account_id",
+            collection_name="cards",
+        )
+        if card_account_id != account_id:
+            raise SeedReferentialIntegrityError(
+                "card_account_xref account_id "
+                f"{account_id!r} does not match cards.account_id {card_account_id!r} "
+                f"for card_number {card_number!r}."
+            )
+
+
+def _required_string_field(
+    record: dict[str, object],
+    field_name: str,
+    *,
+    collection_name: str,
+) -> str:
+    value = record.get(field_name)
+    if not isinstance(value, str) or value == "":
+        raise SeedReferentialIntegrityError(
+            f"{collection_name} record is missing required string field {field_name!r}."
+        )
+    return value
 
 
 if __name__ == "__main__":

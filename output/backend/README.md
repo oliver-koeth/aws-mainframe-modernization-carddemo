@@ -103,11 +103,22 @@ The canonical Phase 1 bootstrap command is `.venv/bin/python -m app.seed_import`
 
 - reads the shipped fixed-width seed sources from `app/data/ASCII.seed`
 - parses them through the shared record-family parsers plus `app.importing.parse_lines_strict`
+- validates the imported customer/account/card/card-xref collections for required cross-file joins before writing anything
 - rewrites `output/backend/store.json` through `app.storage.write_store`
 
 Expected successful output is a one-line summary naming the target `store.json` path plus imported collection counts. `report_requests` and the `operations.*` collections remain present but empty until later stories import runtime-managed files and job telemetry.
 
 Use `--seed-dir`, `--store-path`, or `--schedules-path` only when testing against alternate fixtures or an isolated workspace.
+
+For the shipped identity/account bootstrap data, the importer currently requires these integrity rules:
+
+- every `cards[].account_id` must exist in `accounts[]`
+- every `card_account_xref[].customer_id` must exist in `customers[]`
+- every `card_account_xref[].account_id` must exist in `accounts[]`
+- every `card_account_xref[].card_number` must exist in `cards[]`
+- every `card_account_xref` row must agree with the matching `cards[].account_id`
+
+If any of those joins drift, `app.seed_import` fails with `SeedReferentialIntegrityError` and does not rewrite `store.json`.
 
 ## Frontend Integration
 
