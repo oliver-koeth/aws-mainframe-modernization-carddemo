@@ -133,6 +133,7 @@ If a story changes API or persistence behavior, include automated tests.
 - For Phase 1 seed bootstrap work, use `output/backend/app/importing.py` `parse_lines_strict()` as the shared malformed-line strategy so import commands hard-fail with structured `SeedImportError.detail` diagnostics instead of inventing per-file quarantine formats.
 - Keep the canonical seed bootstrap entry point in `output/backend/app/seed_import.py`; extend its `SEED_SOURCES` mapping and shared storage write path instead of adding parallel one-off import scripts when new Phase 1 record families are imported.
 - When bootstrap stories import related record families, add cross-file referential checks in `output/backend/app/seed_import.py` before `write_store()` so individually valid rows do not persist broken joins to `store.json`.
+- When shipped seed fixtures change, keep the documented Phase 1 baseline counts in `output/backend/README.md` synchronized with the centralized regression expectations in `output/backend/tests/test_seed_import.py` so bootstrap drift is explicit in both docs and CI.
 - Writes should be atomic.
 - Concurrency protection belongs in shared storage code, not duplicated per endpoint.
 

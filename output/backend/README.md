@@ -110,6 +110,25 @@ The canonical Phase 1 bootstrap command is `.venv/bin/python -m app.seed_import`
 
 Expected successful output is a one-line summary naming the target `store.json` path plus imported collection counts. The `operations.*` collections remain present but empty because Phase 1 only defines their schema.
 
+The shipped Phase 1 bootstrap baseline currently expects these collection counts after a successful import:
+
+- `users=2`
+- `customers=50`
+- `accounts=50`
+- `cards=50`
+- `card_account_xref=50`
+- `transaction_types=7`
+- `transaction_categories=18`
+- `disclosure_groups=51`
+- `category_balances=50`
+- `transactions=300`
+- `report_requests=1`
+- `operations.sessions=0`
+- `operations.job_runs=0`
+- `operations.job_run_details=0`
+
+`output/backend/tests/test_seed_import.py` treats that one-line count summary as a regression snapshot. If shipped seed files change intentionally, update both the fixture data and the documented baseline together so CI makes the drift explicit.
+
 An imported `store.json` is considered complete when it can be loaded immediately through `app.storage.read_store` with no manual edits and still contains:
 
 - the canonical `metadata` schema header

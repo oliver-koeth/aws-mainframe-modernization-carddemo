@@ -15,19 +15,61 @@ from app.seed_import import (
     bootstrap_store,
     default_runtime_data_directory,
     main,
+    summarize_store_counts,
 )
 from app.services import build_backend_state
 from app.storage import read_store
 
 
+REPO_SEED_DIR = Path(__file__).resolve().parents[3] / "app" / "data" / "ASCII.seed"
+BASELINE_IMPORT_COUNTS = {
+    "users": 2,
+    "customers": 50,
+    "accounts": 50,
+    "cards": 50,
+    "card_account_xref": 50,
+    "transaction_types": 7,
+    "transaction_categories": 18,
+    "disclosure_groups": 51,
+    "category_balances": 50,
+    "transactions": 300,
+    "report_requests": 1,
+    "operations.sessions": 0,
+    "operations.job_runs": 0,
+    "operations.job_run_details": 0,
+}
+
+
+def assert_baseline_import_counts(payload) -> None:
+    assert len(payload["users"]) == BASELINE_IMPORT_COUNTS["users"]
+    assert len(payload["customers"]) == BASELINE_IMPORT_COUNTS["customers"]
+    assert len(payload["accounts"]) == BASELINE_IMPORT_COUNTS["accounts"]
+    assert len(payload["cards"]) == BASELINE_IMPORT_COUNTS["cards"]
+    assert len(payload["card_account_xref"]) == BASELINE_IMPORT_COUNTS["card_account_xref"]
+    assert len(payload["transaction_types"]) == BASELINE_IMPORT_COUNTS["transaction_types"]
+    assert len(payload["transaction_categories"]) == BASELINE_IMPORT_COUNTS[
+        "transaction_categories"
+    ]
+    assert len(payload["disclosure_groups"]) == BASELINE_IMPORT_COUNTS["disclosure_groups"]
+    assert len(payload["category_balances"]) == BASELINE_IMPORT_COUNTS["category_balances"]
+    assert len(payload["transactions"]) == BASELINE_IMPORT_COUNTS["transactions"]
+    assert len(payload["report_requests"]) == BASELINE_IMPORT_COUNTS["report_requests"]
+    assert len(payload["operations"]["sessions"]) == BASELINE_IMPORT_COUNTS["operations.sessions"]
+    assert len(payload["operations"]["job_runs"]) == BASELINE_IMPORT_COUNTS[
+        "operations.job_runs"
+    ]
+    assert len(payload["operations"]["job_run_details"]) == BASELINE_IMPORT_COUNTS[
+        "operations.job_run_details"
+    ]
+
+
 def test_bootstrap_store_populates_store_from_repo_seed_data(
     storage_paths,
 ) -> None:
-    seed_dir = Path(__file__).resolve().parents[3] / "app" / "data" / "ASCII.seed"
     runtime_data_dir = default_runtime_data_directory()
 
     payload = bootstrap_store(
-        seed_dir=seed_dir,
+        seed_dir=REPO_SEED_DIR,
         runtime_data_dir=runtime_data_dir,
         storage_paths=storage_paths,
     )
@@ -38,7 +80,9 @@ def test_bootstrap_store_populates_store_from_repo_seed_data(
     assert payload["operations"] == default_store_document()["operations"]
 
     for seed_source in SEED_SOURCES:
-        source_lines = (seed_dir / seed_source.filename).read_text(encoding="utf-8").splitlines()
+        source_lines = (REPO_SEED_DIR / seed_source.filename).read_text(
+            encoding="utf-8"
+        ).splitlines()
         assert len(payload[seed_source.collection_name]) == len(source_lines)
 
     runtime_lines = (runtime_data_dir / REPORT_REQUESTS_FILENAME).read_text(
@@ -50,11 +94,10 @@ def test_bootstrap_store_populates_store_from_repo_seed_data(
 def test_bootstrap_store_preserves_complete_store_envelope(
     storage_paths,
 ) -> None:
-    seed_dir = Path(__file__).resolve().parents[3] / "app" / "data" / "ASCII.seed"
     runtime_data_dir = default_runtime_data_directory()
 
     payload = bootstrap_store(
-        seed_dir=seed_dir,
+        seed_dir=REPO_SEED_DIR,
         runtime_data_dir=runtime_data_dir,
         storage_paths=storage_paths,
     )
@@ -76,14 +119,13 @@ def test_bootstrap_store_preserves_complete_store_envelope(
 def test_imported_store_loads_from_backend_state_without_manual_edits(
     tmp_path,
 ) -> None:
-    seed_dir = Path(__file__).resolve().parents[3] / "app" / "data" / "ASCII.seed"
     runtime_data_dir = default_runtime_data_directory()
     backend_root = tmp_path / "backend"
     backend_root.mkdir()
     state = build_backend_state(backend_root)
 
     payload = bootstrap_store(
-        seed_dir=seed_dir,
+        seed_dir=REPO_SEED_DIR,
         runtime_data_dir=runtime_data_dir,
         storage_paths=state.paths,
     )
@@ -98,13 +140,12 @@ def test_seed_import_main_supports_explicit_paths(
     schedules_path,
     store_path,
 ) -> None:
-    seed_dir = Path(__file__).resolve().parents[3] / "app" / "data" / "ASCII.seed"
     runtime_data_dir = default_runtime_data_directory()
 
     exit_code = main(
         [
             "--seed-dir",
-            str(seed_dir),
+            str(REPO_SEED_DIR),
             "--runtime-data-dir",
             str(runtime_data_dir),
             "--store-path",
@@ -127,19 +168,15 @@ def test_seed_import_main_supports_explicit_paths(
 def test_bootstrap_store_preserves_identity_account_relationships(
     storage_paths,
 ) -> None:
-    seed_dir = Path(__file__).resolve().parents[3] / "app" / "data" / "ASCII.seed"
     runtime_data_dir = default_runtime_data_directory()
 
     payload = bootstrap_store(
-        seed_dir=seed_dir,
+        seed_dir=REPO_SEED_DIR,
         runtime_data_dir=runtime_data_dir,
         storage_paths=storage_paths,
     )
 
-    assert len(payload["customers"]) == 50
-    assert len(payload["accounts"]) == 50
-    assert len(payload["cards"]) == 50
-    assert len(payload["card_account_xref"]) == 50
+    assert_baseline_import_counts(payload)
 
     customer_ids = {record["customer_id"] for record in payload["customers"]}
     account_ids = {record["account_id"] for record in payload["accounts"]}
@@ -165,14 +202,13 @@ def test_bootstrap_store_rejects_card_xref_account_mismatch(
     storage_paths,
     tmp_path,
 ) -> None:
-    source_seed_dir = Path(__file__).resolve().parents[3] / "app" / "data" / "ASCII.seed"
     runtime_data_dir = default_runtime_data_directory()
     seed_dir = tmp_path / "seed"
     seed_dir.mkdir()
 
     for seed_source in SEED_SOURCES:
         (seed_dir / seed_source.filename).write_text(
-            (source_seed_dir / seed_source.filename).read_text(encoding="utf-8"),
+            (REPO_SEED_DIR / seed_source.filename).read_text(encoding="utf-8"),
             encoding="utf-8",
         )
 
@@ -197,20 +233,15 @@ def test_bootstrap_store_rejects_card_xref_account_mismatch(
 def test_bootstrap_store_imports_reference_data_and_report_requests(
     storage_paths,
 ) -> None:
-    seed_dir = Path(__file__).resolve().parents[3] / "app" / "data" / "ASCII.seed"
     runtime_data_dir = default_runtime_data_directory()
 
     payload = bootstrap_store(
-        seed_dir=seed_dir,
+        seed_dir=REPO_SEED_DIR,
         runtime_data_dir=runtime_data_dir,
         storage_paths=storage_paths,
     )
 
-    assert len(payload["transaction_types"]) == 7
-    assert len(payload["transaction_categories"]) == 18
-    assert len(payload["disclosure_groups"]) == 51
-    assert len(payload["category_balances"]) == 50
-    assert len(payload["report_requests"]) == 1
+    assert_baseline_import_counts(payload)
 
     transaction_type_codes = {
         record["transaction_type_code"] for record in payload["transaction_types"]
@@ -245,16 +276,35 @@ def test_bootstrap_store_imports_reference_data_and_report_requests(
     assert report_request["end_date"] == date(2026, 3, 10)
 
 
+def test_bootstrap_store_matches_phase_1_baseline_snapshot(
+    storage_paths,
+) -> None:
+    runtime_data_dir = default_runtime_data_directory()
+
+    payload = bootstrap_store(
+        seed_dir=REPO_SEED_DIR,
+        runtime_data_dir=runtime_data_dir,
+        storage_paths=storage_paths,
+    )
+
+    assert_baseline_import_counts(payload)
+    assert summarize_store_counts(payload) == (
+        "users=2, customers=50, accounts=50, cards=50, card_account_xref=50, "
+        "transaction_types=7, transaction_categories=18, disclosure_groups=51, "
+        "category_balances=50, transactions=300, report_requests=1, "
+        "operations.sessions=0, operations.job_runs=0, operations.job_run_details=0"
+    )
+
+
 def test_bootstrap_store_treats_missing_report_request_log_as_empty(
     storage_paths,
     tmp_path,
 ) -> None:
-    seed_dir = Path(__file__).resolve().parents[3] / "app" / "data" / "ASCII.seed"
     runtime_data_dir = tmp_path / "runtime"
     runtime_data_dir.mkdir()
 
     payload = bootstrap_store(
-        seed_dir=seed_dir,
+        seed_dir=REPO_SEED_DIR,
         runtime_data_dir=runtime_data_dir,
         storage_paths=storage_paths,
     )
@@ -266,14 +316,13 @@ def test_bootstrap_store_rejects_reference_rows_with_missing_transaction_categor
     storage_paths,
     tmp_path,
 ) -> None:
-    source_seed_dir = Path(__file__).resolve().parents[3] / "app" / "data" / "ASCII.seed"
     runtime_data_dir = default_runtime_data_directory()
     seed_dir = tmp_path / "seed"
     seed_dir.mkdir()
 
     for seed_source in SEED_SOURCES:
         (seed_dir / seed_source.filename).write_text(
-            (source_seed_dir / seed_source.filename).read_text(encoding="utf-8"),
+            (REPO_SEED_DIR / seed_source.filename).read_text(encoding="utf-8"),
             encoding="utf-8",
         )
 
@@ -300,7 +349,6 @@ def test_bootstrap_store_rejects_report_request_for_unknown_user(
     storage_paths,
     tmp_path,
 ) -> None:
-    seed_dir = Path(__file__).resolve().parents[3] / "app" / "data" / "ASCII.seed"
     source_runtime_dir = default_runtime_data_directory()
     runtime_data_dir = tmp_path / "runtime"
     runtime_data_dir.mkdir()
@@ -316,7 +364,7 @@ def test_bootstrap_store_rejects_report_request_for_unknown_user(
 
     try:
         bootstrap_store(
-            seed_dir=seed_dir,
+            seed_dir=REPO_SEED_DIR,
             runtime_data_dir=runtime_data_dir,
             storage_paths=storage_paths,
         )

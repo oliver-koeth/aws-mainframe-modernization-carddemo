@@ -14,6 +14,7 @@
 - Transaction reference joins are composite: `CVTRA04Y` categories key on `transaction_type_code` + `transaction_category_code`, `CVTRA03Y` supplies the type lookup, `CVTRA01Y` category balances attach that pair to `account_id`, and `CVTRA02Y` disclosure groups attach the same pair to `account_group_id`.
 - `tranrept_requests.txt` is a runtime-managed pipe-delimited log written by `CORPT00C`, not a fixed-width copybook file; parse it as `timestamp|user_id|report_name|start_date|end_date` and only expect `Monthly`, `Yearly`, or `Custom` report names.
 - Keep `output/docs/record-layouts.md` as the top-level Phase 1 record-layout index and use the narrower `output/docs/*-records.md` files for detailed field mappings; update both layers only when the underlying source semantics change.
+- Keep shipped seed baseline counts centralized in `output/backend/tests/test_seed_import.py` and mirror the same values in `output/backend/README.md`; intentional fixture changes should update both so bootstrap drift is visible in docs and CI.
 
 Started: Fri Mar 13 13:10:05 CET 2026
 ---
@@ -179,4 +180,16 @@ Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scri
   - Treat `STORE_COLLECTION_NAMES` and `STORE_OPERATION_COLLECTION_NAMES` as the backend source of truth for required store collections; update them alongside `default_store_document()` whenever Phase 1 adds a new collection.
   - Regression tests for store completeness are more maintainable when they assert envelope keys and backend loadability instead of duplicating full seed payload snapshots.
   - `app.services.build_backend_state()` is the simplest way to verify that a bootstrapped store can be consumed from a fresh backend workspace without hand-editing paths or files.
+---
+## 2026-03-13 17:21:58 CET - US-015
+Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scripts/ralph/.codex-last-message-iter-4.txt
+- Centralized the shipped Phase 1 seed baseline counts in `output/backend/tests/test_seed_import.py` and added a regression snapshot assertion over `summarize_store_counts(payload)` so collection-count drift fails one test immediately.
+- Updated `output/backend/README.md` to document the expected baseline import counts and to state that the bootstrap count summary is a maintained regression contract for intentional fixture changes.
+- Added the same synchronization rule to `AGENTS.md` so future iterations keep the documented baseline and test expectations aligned.
+- Verified `.venv/bin/python -c "import app.main"`, `.venv/bin/python -m mypy app`, and `.venv/bin/python -m pytest` from `output/backend`.
+- Files changed: `AGENTS.md`, `output/backend/README.md`, `output/backend/tests/test_seed_import.py`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - Keep baseline seed-count assertions in one helper so relationship-focused tests can reuse the same expected totals without reintroducing scattered magic numbers.
+  - Treat the CLI count summary from `app.seed_import.summarize_store_counts()` as a lightweight snapshot contract; it catches fixture drift without persisting a second golden file.
+  - When shipped seed files change intentionally, update both the README baseline section and the centralized test constant in the same commit so documentation and CI stay in sync.
 ---
