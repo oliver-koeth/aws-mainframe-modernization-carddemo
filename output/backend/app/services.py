@@ -1,9 +1,15 @@
-"""Service layer placeholders for the Phase 0 scaffold."""
+"""Shared service wiring for the CardDemo backend workspace."""
 
 from __future__ import annotations
 
 from pathlib import Path
 
+from app.domain.auth import AuthenticationService
+from app.domain.job_telemetry import JobTelemetryService
+from app.domain.lookups import LookupService
+from app.domain.posting import PostingService
+from app.domain.report_requests import ReportRequestService
+from app.domain.transactions import TransactionService
 from app.models import BackendState, StoragePaths
 
 
@@ -15,3 +21,33 @@ def build_backend_state(root: Path) -> BackendState:
             schedules=root / "schedules.json",
         )
     )
+
+
+def build_authentication_service(state: BackendState) -> AuthenticationService:
+    """Create the shared auth/session service bound to the backend store paths."""
+    return AuthenticationService(state.paths)
+
+
+def build_lookup_service(state: BackendState) -> LookupService:
+    """Create the shared account/customer/card lookup service."""
+    return LookupService(state.paths)
+
+
+def build_transaction_service(state: BackendState) -> TransactionService:
+    """Create the shared transaction validation and creation service."""
+    return TransactionService(state.paths)
+
+
+def build_posting_service(state: BackendState) -> PostingService:
+    """Create the shared posting service for online and batch payment flows."""
+    return PostingService(state.paths)
+
+
+def build_report_request_service(state: BackendState) -> ReportRequestService:
+    """Create the shared report-request capture and retrieval service."""
+    return ReportRequestService(state.paths)
+
+
+def build_job_telemetry_service(state: BackendState) -> JobTelemetryService:
+    """Create the shared job-run telemetry write service."""
+    return JobTelemetryService(state.paths)

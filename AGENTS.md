@@ -120,8 +120,26 @@ If a story changes API or persistence behavior, include automated tests.
 ## Data And Persistence Rules
 
 - Preserve COBOL record semantics even when migrating storage to JSON.
+- Preserve leading-zero numeric identifiers from copybooks, such as customer IDs and SSNs, as strings in JSON models unless the runtime semantics require arithmetic.
 - Money should remain precise end-to-end; avoid float-based persistence logic.
 - JSON persistence must support `Decimal`, `date`, and `datetime`.
+- Treat flat files written with GNUCobol `LINE SEQUENTIAL` semantics as logically copybook-width records even when trailing spaces are omitted on disk; right-pad to the authoritative copybook width before slicing fields, then fail deterministically only when required fields are truncated, blank, or invalid.
+- Treat display-form `PIC S9(...)V99` values from flat files as COBOL signed zoned-decimal text; decode the trailing overpunch character into sign plus final digit before normalizing money fields to `Decimal`.
+- For copybook-backed backend parsers under `output/backend/app/domain`, use the shared helpers in `output/backend/app/fixed_width.py` for width checks, field slicing, text normalization, and signed-amount decoding so malformed-line behavior stays consistent across record families.
+- For lookup services over `card_account_xref`, preserve store order: account-driven and card-driven inquiries should stop on the first matching xref to mirror the GNUCobol sequential scans, while customer-driven retrieval can return all related xrefs/accounts/cards in that same persisted order.
+- Treat transaction reference relationships as composite keys: `CVTRA04Y` categories join to `CVTRA03Y` types by `transaction_type_code`, while `CVTRA01Y` balances and `CVTRA02Y` disclosure groups both use the `transaction_type_code` + `transaction_category_code` pair and then join to accounts by `account_id` or `group_id` respectively.
+- Treat `app/data/ASCII/tranrept_requests.txt` as a pipe-delimited runtime file written by `CORPT00C`, not a fixed-width copybook record; each line is `request_timestamp|user_id|report_name|start_date|end_date`, and the emitted report names are limited to `Monthly`, `Yearly`, and `Custom`.
+- Preserve `CORPT00C` report-request append semantics in modernization services: confirmed requests append to `report_requests[]` in store order without duplicate suppression, while `Monthly` and `Yearly` windows are derived from the current date and only `Custom` accepts explicit start/end inputs.
+- Keep job telemetry under `store.json` `operations.job_runs` and `operations.job_run_details`; Phase 1 headers are intentionally minimal (`job_run_id`, `job_name`, `status`, `started_at`, `ended_at`, optional `summary`) and status transitions should stay constrained to `pending -> running -> succeeded` with `failed` allowed from `pending` or `running`.
+- Treat `output/backend/app/models.py` `default_store_document()` plus `output/backend/app/storage.py` `read_store`/`write_store` validation as the authoritative top-level `store.json` contract; extend record collections inside that envelope instead of changing root keys ad hoc.
+- When adding or renaming `store.json` collections, update `output/backend/app/models.py` `STORE_COLLECTION_NAMES` / `STORE_OPERATION_COLLECTION_NAMES` together with `default_store_document()` so seed bootstrap, storage validation, and contract tests stay aligned.
+- For storage-backed domain services under `output/backend/app/domain`, load raw `store.json` collections through `app.storage.read_store()` and validate each persisted row into the canonical Pydantic model at the service boundary before applying business rules; this keeps malformed store data as deterministic consistency errors instead of leaking untyped dict handling across services.
+- For storage-backed transaction creation under `output/backend/app/domain/transactions.py`, mirror `COTRN02C` next-ID semantics by scanning persisted `transactions[]` in store order, remembering the last numeric `transaction_id`, and incrementing that value rather than computing a collection-wide max.
+- Keep bill-payment semantics split the same way as the GNUCobol runtime: `COBIL00C` online payment writes a fixed payment transaction and zeroes only `accounts[].current_balance`, while `CBTRN02C` posting updates `category_balances[]` plus the account cycle buckets.
+- For Phase 1 seed bootstrap work, use `output/backend/app/importing.py` `parse_lines_strict()` as the shared malformed-line strategy so import commands hard-fail with structured `SeedImportError.detail` diagnostics instead of inventing per-file quarantine formats.
+- Keep the canonical seed bootstrap entry point in `output/backend/app/seed_import.py`; extend its `SEED_SOURCES` mapping and shared storage write path instead of adding parallel one-off import scripts when new Phase 1 record families are imported.
+- When bootstrap stories import related record families, add cross-file referential checks in `output/backend/app/seed_import.py` before `write_store()` so individually valid rows do not persist broken joins to `store.json`.
+- When shipped seed fixtures change, keep the documented Phase 1 baseline counts in `output/backend/README.md` synchronized with the centralized regression expectations in `output/backend/tests/test_seed_import.py` so bootstrap drift is explicit in both docs and CI.
 - Writes should be atomic.
 - Concurrency protection belongs in shared storage code, not duplicated per endpoint.
 
@@ -138,6 +156,8 @@ If a story changes API or persistence behavior, include automated tests.
 - Update docs when behavior, commands, or scope assumptions change.
 - Keep Phase 0 docs honest: scaffolding only, not feature-complete migration.
 - Prefer concise operational documentation over long narrative descriptions.
+- Keep `output/docs/record-layouts.md` as the consolidated Phase 1 record-to-model index; retain narrower `output/docs/*-records.md` documents for field-level details rather than duplicating those tables everywhere.
+- Keep `output/docs/phase-1-service-contracts.md` as the consolidated Phase 1 service-boundary and deferred-behavior index; update it when shared domain contracts change so later API/UI stories have one current reference.
 
 ## When To Pause And Ask
 

@@ -6,6 +6,8 @@ The canonical FastAPI package lives in `app/`, with placeholder modules for APIs
 
 The scaffold backend currently exposes `GET /health`, plus temporary `GET /jobs`, `GET /accounts`, and `GET /transactions` placeholder collection endpoints. Those collection routes are Phase 0 scaffold contracts only and intentionally return empty JSON arrays until business migration stories replace them.
 
+The current Phase 1 domain-service boundaries and deferred behaviors are summarized in `output/docs/phase-1-service-contracts.md`.
+
 ## Setup
 
 Create or refresh the local virtual environment from this directory:
@@ -37,15 +39,248 @@ Run the backend tests with:
 .venv/bin/python -m pytest
 ```
 
+Bootstrap the canonical JSON store from the shipped GNUCobol seed files with:
+
+```bash
+.venv/bin/python -m app.seed_import
+```
+
 The acceptance baseline for this scaffold is that `python -m mypy app` and `python -m pytest` both pass from `output/backend/`.
 
 ## Storage Conventions
 
 Application data lives in `store.json`. Future interactive API handlers and batch jobs should treat that file as the single shared JSON store for scaffold and migrated business data.
 
+`store.json` now uses a canonical schema envelope with explicit metadata and predeclared collections:
+
+```json
+{
+  "metadata": {
+    "schema_name": "carddemo.store",
+    "schema_version": 1
+  },
+  "users": [],
+  "customers": [],
+  "accounts": [],
+  "cards": [],
+  "card_account_xref": [],
+  "transaction_types": [],
+  "transaction_categories": [],
+  "disclosure_groups": [],
+  "category_balances": [],
+  "transactions": [],
+  "report_requests": [],
+  "operations": {
+    "sessions": [],
+    "job_runs": [],
+    "job_run_details": []
+  }
+}
+```
+
+Later migration stories should add domain records inside these collections rather than changing the top-level shape ad hoc. Session state is reserved under `operations.sessions`; batch telemetry is reserved under `operations.job_runs` and `operations.job_run_details`.
+
+When `store.json` is missing or empty, `app.storage.read_store` returns the default schema envelope. When the file declares an unsupported schema version or schema name, `read_store` raises `StoreSchemaError` so later import or migration commands fail deterministically instead of guessing how to coerce the payload.
+
 Schedule declarations live in `schedules.json`. Future scheduler and batch stories should use that file for persisted schedule configuration rather than introducing a second schedule store.
 
 Shared JSON writes go through `app.storage`, which serializes updates with a same-directory `.lock` file per target JSON document before performing a temp-file-plus-rename replacement. Future API and batch code should keep using `write_store`, `write_schedules`, or `write_json_file` directly instead of implementing ad hoc write locks at call sites.
+
+## Job Telemetry Service Contracts
+
+Phase 1 now exposes `JobTelemetryService` under `app.domain.job_telemetry` for durable batch run headers and detail events without introducing a scheduler or monitoring API yet.
+
+- `create_job_run()` appends a new `operations.job_runs[]` row in `pending` status with `job_run_id`, `job_name`, and optional `summary`.
+- `start_job_run()` transitions a persisted run from `pending` to `running` and stamps `started_at`.
+- `complete_job_run()` transitions a persisted run from `running` to `succeeded` and stamps `ended_at`.
+- `fail_job_run()` transitions a persisted run from either `pending` or `running` to `failed` and stamps `ended_at`.
+- `append_job_run_detail()` appends one `operations.job_run_details[]` row for an existing run, assigning the next `sequence_number` by persisted order for that `job_run_id`.
+
+The minimal persisted Phase 1 header contract is:
+
+```json
+{
+  "job_run_id": "nightly-20260314-01",
+  "job_name": "nightly-settlement",
+  "status": "running",
+  "started_at": "2026-03-14T09:31:00",
+  "ended_at": null,
+  "summary": "Importing pending transactions"
+}
+```
+
+Phase 1 intentionally limits statuses to `pending`, `running`, `succeeded`, and `failed`. The service rejects illegal terminal transitions such as `pending -> succeeded` or any update after `succeeded`/`failed` so later scheduler or monitoring slices inherit one deterministic lifecycle contract.
+
+## Authentication And Session Lookup
+
+Phase 1 now includes a framework-agnostic authentication service under `app.domain.auth`, built from the authoritative GNUCobol sign-on program `app/cbl/COSGN00C.cbl` plus the user-maintenance persistence rules in `app/cbl/GCUSRSEC.cbl`.
+
+The shared `AuthenticationService.authenticate()` contract follows the COBOL behavior directly:
+
+- upper-case the provided `user_id` and `password` before comparison
+- compare against imported `users[]` records without exposing whether the user ID or password was wrong
+- resolve the authenticated role from `CSUSR01Y` `user_type_code` (`A` -> `admin`, `U` -> `user`)
+- optionally enforce a required role and fail with an authorization error when credentials are valid but the resolved user type is not allowed
+
+`GCUSRSEC` upper-cases user IDs, passwords, and user-type input before persisting records, so the Phase 1 service assumes imported `users[]` data already reflects those write-time semantics. First and last names remain stored as entered.
+
+The authoritative flat-file user record does not contain a disabled or locked status. Because neither `CSUSR01Y`, `COSGN00C`, nor `GCUSRSEC` exposes that state, Phase 1 authentication supports only:
+
+- successful sign-on
+- invalid credentials
+- authorization failures based on the resolved `A`/`U` user type
+
+Phase 1 also defines `AuthenticationService.lookup_session()` over `operations.sessions`, but this is intentionally a lookup-only contract. The GNUCobol runtime carries interactive state in COMMAREA fields rather than a durable session file, so current modernization code resolves previously persisted session rows without inventing a COBOL-backed session-creation workflow yet. The minimal persisted session contract is:
+
+```json
+{
+  "session_id": "string",
+  "user_id": "string",
+  "created_at": "optional ISO-8601 datetime"
+}
+```
+
+Session lookup joins that record back to the canonical `users[]` collection and raises a deterministic consistency error if a stored session references a missing user.
+
+## Lookup Service Contracts
+
+Phase 1 now exposes `LookupService` for the COBOL inquiry flows backed by `accounts[]`, `cards[]`, `customers[]`, and `card_account_xref[]`:
+
+- `lookup_account(account_id=..., card_number=...)` mirrors `COACTVWC` and `COACTUPC`: if only a card number is supplied, the service resolves the first matching xref row and then loads the account; if an account ID is supplied, the service uses that account directly and only attaches the first related xref/customer when one exists.
+- `lookup_card(account_id=..., card_number=...)` mirrors `COCRDSLC`: account-driven card lookup resolves the first matching xref row, while a supplied card number wins direct card lookup and only raises an input error when both inputs are present and the xref proves they conflict.
+- `lookup_customer(customer_id)` returns the canonical customer plus all related xref, account, and card rows in persisted `card_account_xref[]` order.
+
+Deterministic error behavior is:
+
+- blank lookup inputs raise a domain input error
+- missing primary targets raise a domain not-found error
+- duplicate primary keys in `customers[]`, `accounts[]`, or `cards[]` raise an ambiguity error
+- account/card lookups reject primary records where `is_active` is `false`
+- broken customer-driven joins from `card_account_xref[]` to `accounts[]` or `cards[]` raise a store-consistency error instead of silently dropping related rows
+
+Current Phase 1 bootstrap data imports only active `Y` account/card status codes. If later slices persist `is_active=false` rows, lookup services already treat those primary account/card targets as inactive without changing the store envelope.
+
+## Transaction Service Contracts
+
+Phase 1 now exposes `TransactionService` for the `app/cbl/COTRN02C.cbl` transaction-add workflow.
+
+- `validate_transaction(request)` normalizes raw add-transaction inputs without mutating storage.
+- `create_transaction(request)` reuses the same validation path, assigns the next transaction ID, appends the canonical `TransactionRecord` to `transactions[]`, and persists through `app.storage.write_store`.
+
+Current validation rules are:
+
+- resolve account/card input through the shared lookup semantics and reject missing, mismatched, or inactive primary account/card rows
+- require a 2-digit numeric type code and 4-digit numeric category code
+- require the resolved type/category pair to exist in `transaction_types[]` and `transaction_categories[]`
+- require an existing `category_balances[]` row for `(account_id, transaction_type_code, transaction_category_code)` before a new transaction can be created
+- require signed amount text with exactly two fractional digits, no rounding, and a range that fits the 11-character signed-zoned-decimal transaction field
+- require nonblank merchant/source/description fields that do not overflow the fixed-width layout
+- require `originated_on` and `processed_on` in `YYYY-MM-DD` form, defaulting the processed date to the original date when omitted
+- reject original dates after the resolved account expiration date
+
+Next transaction IDs follow the COBOL append scan instead of a max lookup: the service walks persisted `transactions[]` in store order, remembers the last numeric `transaction_id`, increments it, and zero-pads to 16 digits. Nonnumeric historical IDs are ignored for ID assignment but remain valid persisted records.
+
+## Posting Service Contracts
+
+Phase 1 now exposes `PostingService` under `app.domain.posting` for the bill-payment and posting semantics split across `app/cbl/COBIL00C.cbl` and `app/cbl/CBTRN02C.cbl`.
+
+- `create_online_bill_payment(account_id=...)` mirrors `COBIL00C`: resolve the first related card for the supplied account, append a fixed payment transaction (`type=02`, `category=0002`, merchant `999999999` / `BILL PAYMENT`), and then zero only `accounts[].current_balance`.
+- `post_transaction(transaction)` mirrors the `CBTRN02C` posting update path: append the supplied `TransactionRecord`, stamp `processed_at` when it is missing, add the transaction amount into the first matching `category_balances[]` row or create one if none exists, and update the account's `current_balance` plus the current-cycle credit/debit bucket according to the transaction sign.
+
+The important COBOL difference is intentional and documented:
+
+- online bill payment does not update `category_balances[]`, `current_cycle_credit`, or `current_cycle_debit`; it only writes the payment transaction and zeroes the account balance
+- posted-transaction handling does update `category_balances[]` and the cycle buckets, preserving the `CBTRN02C` first-match TCATBAL scan semantics
+
+Current Phase 1 validation is limited to the deterministic prerequisites needed by those paths: the target account/card must resolve through shared store data, the account must have a positive balance for online bill payment, and posted transactions still reject origination dates after account expiration.
+
+## Report Request Service Contracts
+
+Phase 1 now exposes `ReportRequestService` under `app.domain.report_requests` for the `app/cbl/CORPT00C.cbl` report-launcher flow.
+
+- `create_report_request()` validates the requesting user against `users[]`, normalizes `report_type`, derives the requested date window, stamps `requested_at`, and appends the new `ReportRequestRecord` to `report_requests[]`.
+- `list_report_requests()` returns persisted `report_requests[]` rows in store order and supports optional filtering by `requested_by_user_id` and `report_type`.
+
+The current service intentionally preserves the COBOL append behavior: it does not de-duplicate or collapse existing requests, even when the same user requests the same report type and date range repeatedly. Date-window rules mirror `CORPT00C`:
+
+- `Monthly` derives the first and last day of the current month
+- `Yearly` derives January 1 through December 31 of the current year
+- `Custom` requires explicit `start_date` and `end_date`
+
+Requests for unknown users, unsupported report types, non-custom requests with explicit date overrides, or custom ranges where `start_date > end_date` fail with deterministic validation errors. Persisted report-request rows are also validated on read so malformed rows or dangling `requested_by_user_id` references surface as store-consistency errors instead of leaking raw dicts into later services.
+
+## Seed Import Error Handling
+
+Phase 1 uses a strict malformed-line strategy for bootstrap work. Import code should route source rows through `app.importing.parse_lines_strict`, which calls the record-family parser for each line and hard-fails on the first malformed row.
+
+The raised `SeedImportError` includes a structured `detail` payload with:
+
+- `source_name`
+- `line_number`
+- `raw_line`
+- `reason`
+
+This is the canonical place to record malformed-line diagnostics for bootstrap and seed-import commands. Parsers continue to own field-level validation messages; import code wraps those parser errors with source-file context instead of quarantining or coercing bad rows.
+
+## Seed Bootstrap Workflow
+
+The canonical Phase 1 bootstrap command is `.venv/bin/python -m app.seed_import` from `output/backend/`. By default it:
+
+- reads the shipped fixed-width seed sources from `app/data/ASCII.seed`
+- reads the runtime-managed `tranrept_requests.txt` log from `app/data/ASCII`
+- parses them through the shared record-family parsers plus `app.importing.parse_lines_strict`
+- treats a missing or empty `tranrept_requests.txt` file as an empty `report_requests[]` collection
+- validates the imported customer/account/card/card-xref collections plus transaction reference and report-request joins before writing anything
+- rewrites `output/backend/store.json` through `app.storage.write_store`
+
+Expected successful output is a one-line summary naming the target `store.json` path plus imported collection counts. The `operations.*` collections remain present but empty because Phase 1 only defines their schema.
+
+The shipped Phase 1 bootstrap baseline currently expects these collection counts after a successful import:
+
+- `users=2`
+- `customers=50`
+- `accounts=50`
+- `cards=50`
+- `card_account_xref=50`
+- `transaction_types=7`
+- `transaction_categories=18`
+- `disclosure_groups=51`
+- `category_balances=50`
+- `transactions=300`
+- `report_requests=1`
+- `operations.sessions=0`
+- `operations.job_runs=0`
+- `operations.job_run_details=0`
+
+`output/backend/tests/test_seed_import.py` treats that one-line count summary as a regression snapshot. If shipped seed files change intentionally, update both the fixture data and the documented baseline together so CI makes the drift explicit.
+
+An imported `store.json` is considered complete when it can be loaded immediately through `app.storage.read_store` with no manual edits and still contains:
+
+- the canonical `metadata` schema header
+- every declared Phase 1 top-level collection, even when a collection has zero shipped rows
+- the reserved empty operational collections under `operations.sessions`, `operations.job_runs`, and `operations.job_run_details`
+
+Use `--seed-dir`, `--runtime-data-dir`, `--store-path`, or `--schedules-path` only when testing against alternate fixtures or an isolated workspace.
+
+For the shipped identity/account bootstrap data, the importer currently requires these integrity rules:
+
+- every `cards[].account_id` must exist in `accounts[]`
+- every `card_account_xref[].customer_id` must exist in `customers[]`
+- every `card_account_xref[].account_id` must exist in `accounts[]`
+- every `card_account_xref[].card_number` must exist in `cards[]`
+- every `card_account_xref` row must agree with the matching `cards[].account_id`
+
+If any of those joins drift, `app.seed_import` fails with `SeedReferentialIntegrityError` and does not rewrite `store.json`.
+
+For the shipped transaction reference and reporting data, the importer also requires these integrity rules:
+
+- every `transaction_categories[].transaction_type_code` must exist in `transaction_types[]`
+- every `disclosure_groups[]`, `category_balances[]`, and `transactions[]` composite `(transaction_type_code, transaction_category_code)` pair must exist in `transaction_categories[]`
+- every `category_balances[].account_id` must exist in `accounts[]`
+- every `transactions[].card_number` must exist in `cards[]`
+- every `report_requests[].requested_by_user_id` must exist in `users[]`
+
+Phase 1 preserves imported values that are not yet used by APIs or UI, such as disclosure-group interest rates and transaction filler text, by carrying them into the canonical JSON models unchanged instead of dropping fields during bootstrap.
 
 ## Frontend Integration
 

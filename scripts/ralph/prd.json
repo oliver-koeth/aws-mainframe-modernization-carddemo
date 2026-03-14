@@ -1,17 +1,17 @@
 {
   "project": "carddemo",
-  "branchName": "ralph/phase-0-scaffolding",
-  "description": "Phase 0 scaffolding for the CardDemo GNUCobol modernization: create the output-rooted Angular and FastAPI filesystem, establish proxy-based frontend/backend integration, add JSON storage primitives, and set up backend/frontend verification harnesses before any business migration. Defaults for this phase are Python 3.12, Node.js 20 LTS, npm, backend typechecking with mypy, backend tests with pytest, frontend build with npm run build, and frontend smoke tests with Playwright.",
+  "branchName": "ralph/phase-1-domain-model-and-data-contracts",
+  "description": "Phase 1 domain model and data contracts for the CardDemo GNUCobol modernization: define canonical Pydantic models and a versioned store schema from the flat-file runtime, document record layouts and fixed-width parsing rules, bootstrap output/backend/store.json from ASCII seed data, and add framework-agnostic domain services for authentication, lookups, transactions, report requests, and job telemetry without introducing new APIs or UI work.",
   "userStories": [
     {
       "id": "US-001",
-      "title": "Create output-rooted migration workspace skeleton",
-      "description": "As a developer, I want the modernization workspace rooted under output so later slices can add backend, frontend, and docs artifacts without revisiting repository layout.",
+      "title": "Inventory authoritative Phase 1 source artifacts",
+      "description": "As a developer, I want the exact copybooks, programs, flat files, and scripts for Phase 1 identified so implementation does not drift from the GNUCobol runtime baseline.",
       "acceptanceCriteria": [
-        "Create output/backend/, output/frontend/, and output/docs/ directories.",
-        "Create placeholder files for output/backend/README.md, output/frontend/README.md, output/backend/store.json, and output/backend/schedules.json.",
-        "Do not create business-domain source files outside output/ for this modernization scaffold.",
-        "Document in a root-level note or README update that Phase 0 is scaffolding only.",
+        "List the authoritative copybooks, flat files, and scripts used by Phase 1 in the PRD or linked docs.",
+        "Identify which entities come from CVACT01Y, CVACT02Y, CVACT03Y, CVCUS01Y, CVTRA01Y through CVTRA07Y, and CSUSR01Y.",
+        "Identify the seed/bootstrap sources under app/data/ASCII.seed and the reset/init scripts under scripts/.",
+        "State explicitly that the GNUCobol flat-file runtime is authoritative over the legacy CICS runtime for Phase 1 data behavior.",
         "Typecheck passes"
       ],
       "priority": 1,
@@ -20,13 +20,13 @@
     },
     {
       "id": "US-002",
-      "title": "Create FastAPI backend package scaffold",
-      "description": "As a developer, I want a canonical FastAPI package under output/backend so later slices can add APIs, services, jobs, and tests without reworking file structure.",
+      "title": "Define canonical store schema envelope and versioning",
+      "description": "As a developer, I want a versioned store.json schema envelope so imported data and later mutations share one explicit contract.",
       "acceptanceCriteria": [
-        "Create output/backend/app/ and output/backend/tests/ directories.",
-        "Add backend modules at minimum: __init__.py, main.py, models.py, storage.py, services.py, jobs.py, and scheduler.py under output/backend/app/.",
-        "Add output/backend/pyproject.toml targeting Python 3.12 with the dependencies and tooling configuration needed for backend import, mypy typechecking, and pytest discovery.",
-        "Backend imports cleanly from the output/backend workspace.",
+        "Define the top-level output/backend/store.json structure, including schema version metadata and entity collections.",
+        "Define where job run history and future session-related data will live without requiring a Phase 1 API surface.",
+        "Describe migration/versioning rules for future schema changes.",
+        "Specify deterministic behavior when a store is missing, empty, or on an unsupported schema version.",
         "Typecheck passes"
       ],
       "priority": 2,
@@ -35,12 +35,14 @@
     },
     {
       "id": "US-003",
-      "title": "Create Angular frontend workspace scaffold",
-      "description": "As a developer, I want the output/frontend workspace and package metadata created so later frontend stories can add the Angular shell on top of a stable directory structure.",
+      "title": "Model user security records",
+      "description": "As a developer, I want canonical user models derived from CSUSR01Y so later authentication and administration flows can use a stable user contract.",
       "acceptanceCriteria": [
-        "Create output/frontend/ with package.json, README.md, playwright.config.ts, and Angular source directories using npm and a Node.js 20 LTS compatible setup.",
-        "Do not add business feature components in this story beyond the minimum workspace scaffold.",
-        "Frontend workspace files are located entirely under output/frontend/.",
+        "Define Pydantic models for user security records and any normalized sub-structures required by the JSON store.",
+        "Map fixed-width fields from the authoritative copybook to typed model fields, including status and role semantics if present in the flat-file runtime.",
+        "Document field-level handling for trimmed text, blank values, and unsupported values.",
+        "Add representative parser tests for valid and malformed user-security lines.",
+        "Tests pass",
         "Typecheck passes"
       ],
       "priority": 3,
@@ -49,12 +51,14 @@
     },
     {
       "id": "US-004",
-      "title": "Add Angular standalone app shell files",
-      "description": "As a developer, I want the Angular standalone shell files created so later UI stories can add routes and screens without rebuilding the app entrypoints.",
+      "title": "Model customer records",
+      "description": "As a developer, I want canonical customer models derived from CVCUS01Y so later inquiry and maintenance flows can reuse one customer contract.",
       "acceptanceCriteria": [
-        "Add standalone app shell files at minimum: app.component.ts, app.component.html, and routes.ts.",
-        "Do not use NgModule-based bootstrapping for the new frontend scaffold.",
-        "The shell compiles as part of the frontend workspace.",
+        "Define Pydantic models for customer records and any normalized nested structures needed in JSON.",
+        "Map fixed-width customer fields to typed model fields, including address, contact, and date handling where present.",
+        "Document blank-field and unsupported-value handling rules.",
+        "Add representative parser tests for valid and malformed customer lines.",
+        "Tests pass",
         "Typecheck passes"
       ],
       "priority": 4,
@@ -63,14 +67,15 @@
     },
     {
       "id": "US-005",
-      "title": "Add jobs placeholder component and route",
-      "description": "As a developer, I want a jobs placeholder component and route so the later batch admin UI has a stable insertion point in the frontend shell.",
+      "title": "Model account, card, and card cross-reference records",
+      "description": "As a developer, I want canonical account and card models so account and card lookup flows have one shared contract.",
       "acceptanceCriteria": [
-        "Add a jobs placeholder component in the output/frontend app source.",
-        "Add a route for the jobs surface using the standalone Angular routing setup.",
-        "The root layout can navigate to or render the jobs placeholder without runtime errors.",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
+        "Define Pydantic models for account records from CVACT01Y, card records from CVACT02Y, and card/account cross-reference records from CVACT03Y.",
+        "Document key relationships between account IDs, customer IDs, and card numbers.",
+        "Use Decimal for balances, limits, and other money fields.",
+        "Add representative parser tests for valid and malformed lines across all three record types.",
+        "Tests pass",
+        "Typecheck passes"
       ],
       "priority": 5,
       "passes": true,
@@ -78,15 +83,15 @@
     },
     {
       "id": "US-006",
-      "title": "Configure proxy-based frontend/backend integration",
-      "description": "As a developer, I want one explicit API origin strategy so frontend calls work consistently in development and later slices avoid CORS drift.",
+      "title": "Model transaction reference and balance records",
+      "description": "As a developer, I want canonical models for transaction types, categories, disclosure groups, and category balances so transaction logic and reporting can reuse stable reference data.",
       "acceptanceCriteria": [
-        "Configure Angular proxying so /api/* routes to the FastAPI backend in development.",
-        "Use '/api' as the shared frontend API base path.",
-        "Do not rely on wildcard CORS with credentials.",
-        "Document the exact local dev commands needed to run frontend and backend together using the proxy strategy, with npm as the frontend package manager.",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
+        "Define Pydantic models for CVTRA01Y through CVTRA04Y record families used for category balances, disclosure groups, transaction types, and transaction categories.",
+        "Document primary keys, lookup fields, and cross-entity relationships.",
+        "Define deterministic handling for unknown codes, blank values, and unsupported flags.",
+        "Add representative parser tests for valid and malformed lines across these record families.",
+        "Tests pass",
+        "Typecheck passes"
       ],
       "priority": 6,
       "passes": true,
@@ -94,12 +99,14 @@
     },
     {
       "id": "US-007",
-      "title": "Implement health endpoint",
-      "description": "As a developer, I want a minimal FastAPI health endpoint so the scaffold backend can be started and verified before any domain APIs exist.",
+      "title": "Model transaction event, report request, and job telemetry records",
+      "description": "As a developer, I want canonical models for transactions, report requests, and job runs so both online and batch slices can share stable event and monitoring contracts.",
       "acceptanceCriteria": [
-        "Implement GET /health returning JSON with application/json.",
-        "Backend startup smoke checks pass, including python -c \"import app.main\" from output/backend.",
-        "Add or update tests covering the health endpoint response shape.",
+        "Define Pydantic models for transaction records using the applicable CVTRA05Y through CVTRA07Y layouts and flat-file semantics.",
+        "Define a canonical model for report requests sourced from tranrept_requests.txt.",
+        "Define canonical job run and job run detail models for JSON persistence even though Phase 1 does not yet implement schedulable jobs.",
+        "Document timestamp, date, and money serialization rules used by these models.",
+        "Add representative parser tests for valid and malformed transaction and report-request lines.",
         "Tests pass",
         "Typecheck passes"
       ],
@@ -109,13 +116,13 @@
     },
     {
       "id": "US-008",
-      "title": "Implement placeholder collection endpoints",
-      "description": "As a developer, I want scaffolding-only collection endpoints so the frontend shell and smoke tests can exercise stable JSON contracts before domain migration starts.",
+      "title": "Author record-layouts documentation",
+      "description": "As a developer, I want one document that explains how COBOL record layouts map into the modernization schema so later slices do not reverse-engineer field meanings repeatedly.",
       "acceptanceCriteria": [
-        "Implement scaffolding-only GET /jobs, GET /accounts, and GET /transactions endpoints returning empty JSON arrays.",
-        "Mark placeholder endpoints clearly in code or docs as temporary scaffold contracts for Phase 0.",
-        "Add or update tests covering the placeholder endpoint JSON responses.",
-        "Tests pass",
+        "Create or update output/docs/record-layouts.md.",
+        "Document each Phase 1 entity, its source copybook or flat file, record width, key fields, and target JSON model.",
+        "Document parsing conventions such as trimming, numeric conversion, date interpretation, and malformed-line handling.",
+        "Document any intentionally deferred or unsupported fields explicitly rather than omitting them silently.",
         "Typecheck passes"
       ],
       "priority": 8,
@@ -124,14 +131,15 @@
     },
     {
       "id": "US-009",
-      "title": "Add shared frontend API client foundation",
-      "description": "As a developer, I want a shared frontend API client so later UI slices can call scaffold and business endpoints through one stable abstraction.",
+      "title": "Implement reusable fixed-width parsing primitives",
+      "description": "As a developer, I want shared parsing helpers for fixed-width records so every importer and parser test uses the same width and conversion rules.",
       "acceptanceCriteria": [
-        "Add a shared frontend API service or equivalent foundation that targets the '/api' base path.",
-        "The shell can request scaffold endpoints without manual URL rewrites.",
-        "Keep the API client implementation inside output/frontend/.",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
+        "Implement shared parsing primitives under output/backend rather than duplicating per-entity parsing logic.",
+        "Support field slicing, typed conversion, and deterministic parse errors or quarantine results.",
+        "Make parser behavior explicit for malformed-width lines, invalid numeric data, and blank optional fields.",
+        "Add unit tests covering success paths and deterministic failures.",
+        "Tests pass",
+        "Typecheck passes"
       ],
       "priority": 9,
       "passes": true,
@@ -139,14 +147,13 @@
     },
     {
       "id": "US-010",
-      "title": "Implement JSON storage serialization and atomic writes",
-      "description": "As a developer, I want shared JSON persistence primitives so later domain and batch slices can safely store application data and schedule declarations.",
+      "title": "Decide and implement malformed-line handling strategy",
+      "description": "As a developer, I want a deterministic strategy for malformed-width or invalid lines so bootstrap behavior is repeatable and diagnosable.",
       "acceptanceCriteria": [
-        "Use output/backend/store.json as the single application data file.",
-        "Create and use output/backend/schedules.json for schedule declarations.",
-        "Implement serializer and deserializer support for Decimal, date, and datetime values.",
-        "Write store updates atomically using a temp-file-plus-rename pattern.",
-        "Storage round-trip tests verify typed values survive write and reload using pytest.",
+        "Choose one strategy for malformed lines: hard-fail import, quarantine with reporting, or another explicitly documented deterministic path.",
+        "Apply the same strategy consistently across all Phase 1 parsers.",
+        "Document where malformed-line details are recorded and how tests assert that behavior.",
+        "Add tests covering malformed-width rejection or quarantine behavior.",
         "Tests pass",
         "Typecheck passes"
       ],
@@ -156,13 +163,13 @@
     },
     {
       "id": "US-011",
-      "title": "Add shared write locking for storage updates",
-      "description": "As a developer, I want shared locking around JSON writes so later API and batch slices do not corrupt the store during concurrent updates.",
+      "title": "Define seed import command and bootstrap workflow",
+      "description": "As a developer, I want one canonical importer entry point so a fresh Phase 1 environment can initialize store.json from shipped seed data without manual file editing.",
       "acceptanceCriteria": [
-        "Implement a documented locking strategy in shared storage code rather than per-feature call sites.",
-        "Locking failure behavior is deterministic and surfaced in a testable way.",
-        "Add at least one test covering lock contention or concurrent write protection.",
-        "The locking approach remains compatible with future interactive API and batch job handlers.",
+        "Define one canonical import command or script entry point under output/backend.",
+        "Read from app/data/ASCII.seed/* and initialize output/backend/store.json.",
+        "Document the workflow in backend docs with prerequisites and expected output.",
+        "Support a clean bootstrap from repository seed data after Phase 0 scaffolding.",
         "Tests pass",
         "Typecheck passes"
       ],
@@ -172,14 +179,13 @@
     },
     {
       "id": "US-012",
-      "title": "Add backend pytest harness and fixtures",
-      "description": "As a developer, I want baseline backend tests and fixtures so later slices can extend verification without rebuilding the test foundation.",
+      "title": "Import user, customer, account, and card seed data",
+      "description": "As a developer, I want the primary identity and account datasets loaded into the JSON store so later domain services can assume seeded relationships exist.",
       "acceptanceCriteria": [
-        "Add pytest configuration and baseline tests under output/backend/tests/.",
-        "Provide reusable fixtures for disposable store.json and schedules.json files.",
-        "Add tests for backend import, health endpoint JSON responses, and storage round-trip behavior.",
-        "Pytest discovers and runs the baseline backend test suite successfully via python -m pytest.",
-        "Backend typechecking runs successfully via python -m mypy app.",
+        "Import user, customer, account, card, and card cross-reference data from the shipped ASCII seed files.",
+        "Preserve key relationships across imported entities.",
+        "Define deterministic rules for unsupported, ignored, or normalized source values.",
+        "Add tests that assert stable entity counts and key relationships after import.",
         "Tests pass",
         "Typecheck passes"
       ],
@@ -189,12 +195,15 @@
     },
     {
       "id": "US-013",
-      "title": "Add frontend build command and verification wiring",
-      "description": "As a developer, I want a stable frontend build command so the scaffold can be verified locally and in later CI automation.",
+      "title": "Import transaction reference data and report-request seed data",
+      "description": "As a developer, I want reference and reporting datasets loaded into the JSON store so later transaction and reporting flows can rely on stable seeded lookups.",
       "acceptanceCriteria": [
-        "Add a frontend build command suitable for local verification and CI use as npm run build.",
-        "Frontend build succeeds from output/frontend/.",
-        "Document the build command in output/frontend/README.md.",
+        "Import transaction types, transaction categories, disclosure groups, and category balances from the shipped seed files under app/data/ASCII.seed.",
+        "Bootstrap report requests from app/data/ASCII/tranrept_requests.txt using the CORPT00C line format, treating the file as empty-by-default runtime data when no requests exist.",
+        "Preserve lookup integrity among imported reference datasets.",
+        "Document deterministic handling for values present in flat files but not yet used by later slices.",
+        "Add tests that assert stable counts and representative lookup relationships after import.",
+        "Tests pass",
         "Typecheck passes"
       ],
       "priority": 13,
@@ -203,12 +212,13 @@
     },
     {
       "id": "US-014",
-      "title": "Add Playwright configuration and smoke test skeleton",
-      "description": "As a developer, I want Playwright configured with baseline smoke test files so later UI slices can add browser checks without redoing test setup.",
+      "title": "Bootstrap default store metadata and empty operational collections",
+      "description": "As a developer, I want seed import to produce a complete usable store so later slices can start without additional manual initialization.",
       "acceptanceCriteria": [
-        "Add Playwright configuration under output/frontend/ and baseline smoke test files under output/frontend/e2e/.",
-        "The smoke test skeleton is runnable against the scaffolded frontend and backend together via Playwright.",
-        "Document how to run the Playwright smoke tests.",
+        "Imported store.json includes schema version metadata and all required Phase 1 collections.",
+        "Collections with no shipped seed rows still exist with deterministic empty defaults where later slices expect them.",
+        "Backend startup after import does not require additional manual store edits.",
+        "Add tests proving a newly imported store can be loaded successfully by backend storage code.",
         "Tests pass",
         "Typecheck passes"
       ],
@@ -218,14 +228,14 @@
     },
     {
       "id": "US-015",
-      "title": "Add browser smoke test for scaffold JSON endpoints",
-      "description": "As a developer, I want a browser smoke test that exercises the scaffold JSON endpoints so frontend/backend integration is proven before business features exist.",
+      "title": "Expose baseline import counts and verification expectations",
+      "description": "As a developer, I want documented baseline import counts and integrity checks so regressions in seed bootstrap can be detected quickly.",
       "acceptanceCriteria": [
-        "Add a browser smoke test that confirms /jobs, /accounts, and /transactions responses can be fetched from frontend context and parsed as JSON.",
-        "The test runs against the scaffolded frontend and backend together.",
+        "Document baseline row counts for imported Phase 1 entities or define a generated snapshot assertion approach with stable expectations.",
+        "Document the key integrity checks that must hold after import.",
+        "Add automated tests that fail when baseline counts or critical relationships drift unexpectedly.",
         "Tests pass",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
+        "Typecheck passes"
       ],
       "priority": 15,
       "passes": true,
@@ -233,12 +243,15 @@
     },
     {
       "id": "US-016",
-      "title": "Document backend scaffold conventions",
-      "description": "As a developer or autonomous agent, I want backend scaffold conventions documented so later slices can reuse the same commands and storage assumptions.",
+      "title": "Implement authentication and session lookup domain service",
+      "description": "As a developer, I want a framework-agnostic authentication and session lookup service so the later session API can reuse Phase 1 business logic directly.",
       "acceptanceCriteria": [
-        "Document backend startup, build, test, and storage conventions in output/backend/README.md using Python 3.12, python -m mypy app, and python -m pytest as defaults.",
-        "Document the purpose of output/backend/store.json and output/backend/schedules.json.",
-        "Document that placeholder API endpoints are temporary scaffold contracts for Phase 0.",
+        "Implement a shared service that validates credentials against imported user data using app/cbl/COSGN00C.cbl authentication behavior as the source of truth.",
+        "Match COSGN00C semantics for upper-casing user ID and password comparison, successful user-type resolution, and invalid-credential handling.",
+        "Implement session lookup behavior as a domain service contract without creating REST endpoints in Phase 1.",
+        "Use app/cbl/GCUSRSEC.cbl as the source for user-record persistence semantics, and document any unresolved ambiguities in password or session behavior explicitly.",
+        "Add pytest coverage for valid login, invalid login, disabled, or unauthorized cases supported by the source data.",
+        "Tests pass",
         "Typecheck passes"
       ],
       "priority": 16,
@@ -247,12 +260,14 @@
     },
     {
       "id": "US-017",
-      "title": "Document frontend scaffold conventions",
-      "description": "As a developer or autonomous agent, I want frontend scaffold conventions documented so later slices can reuse the same commands and proxy assumptions.",
+      "title": "Implement customer, account, and card lookup domain services",
+      "description": "As a developer, I want shared lookup services so later inquiry flows can retrieve related customers, accounts, and cards from one place.",
       "acceptanceCriteria": [
-        "Document frontend startup, proxying, build, and test conventions in output/frontend/README.md using Node.js 20 LTS, npm, npm run build, and Playwright as defaults.",
-        "Document the '/api' base path and proxy strategy.",
-        "Document how to run the jobs placeholder route and smoke tests.",
+        "Implement lookup services for account ID, customer ID, and card number driven retrieval using the lookup semantics from app/cbl/COACTVWC.cbl, app/cbl/COACTUPC.cbl, app/cbl/COCRDLIC.cbl, and app/cbl/COCRDSLC.cbl.",
+        "Return canonical domain models or explicit domain errors rather than framework-specific responses.",
+        "Define deterministic behavior for missing records, inactive records, and ambiguous lookups consistent with the GNUCobol flat-file runtime.",
+        "Add pytest coverage for successful and failing lookup scenarios.",
+        "Tests pass",
         "Typecheck passes"
       ],
       "priority": 17,
@@ -261,15 +276,82 @@
     },
     {
       "id": "US-018",
-      "title": "Document root-level Phase 0 scope note",
-      "description": "As a developer or reviewer, I want a root-level note about Phase 0 scope so the scaffold is not mistaken for completed business migration.",
+      "title": "Implement transaction validation and creation domain service",
+      "description": "As a developer, I want shared transaction validation and creation logic so later online and batch posting flows do not duplicate monetary and reference-data rules.",
       "acceptanceCriteria": [
-        "Add or update one root-level documentation file to state that Phase 0 is scaffolding only.",
-        "Document that root-level CI or task-runner work is deferred unless needed to make documented commands runnable.",
-        "Reference the output/ workspace as the target root for generated migration artifacts.",
+        "Implement a framework-agnostic service for transaction creation and validation using app/cbl/COTRN02C.cbl as the primary source program.",
+        "Match COTRN02C validation rules for account and card resolution, account-active checks, required type and category code formats, amount parsing, date validation, merchant field validation, and account-expiration checks.",
+        "Validate required relationships against imported accounts, cards, transaction types, categories, and balances as required by the flat-file runtime semantics.",
+        "Use Decimal consistently for money handling and document rounding rules if any apply.",
+        "Add pytest coverage for valid transaction creation and representative validation failures.",
+        "Tests pass",
         "Typecheck passes"
       ],
       "priority": 18,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-019",
+      "title": "Implement bill-payment posting semantics service",
+      "description": "As a developer, I want bill-payment posting logic isolated in a shared service so later online and batch flows can reuse the same balance update rules.",
+      "acceptanceCriteria": [
+        "Implement shared domain logic for bill-payment posting semantics using app/cbl/COBIL00C.cbl for online payment behavior and app/cbl/CBTRN02C.cbl for posted-transaction and category-balance update semantics.",
+        "Document how balances, transaction records, and category balances change when a payment is posted, including the current COBOL behavior of zeroing the account balance on online bill payment and updating TCATBAL during posting.",
+        "Keep the service framework-agnostic and storage-aware without introducing new API endpoints.",
+        "Add pytest coverage for representative posting scenarios and validation failures.",
+        "Tests pass",
+        "Typecheck passes"
+      ],
+      "priority": 19,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-020",
+      "title": "Implement report request capture and retrieval service",
+      "description": "As a developer, I want report-request capture logic in a shared service so later reporting APIs and jobs can reuse one contract.",
+      "acceptanceCriteria": [
+        "Implement shared service methods for creating and retrieving report requests.",
+        "Define canonical validation for report request fields and duplicate or conflicting request behavior if applicable.",
+        "Persist report requests through shared storage contracts without introducing a Phase 1 endpoint.",
+        "Add pytest coverage for request creation, retrieval, and validation errors.",
+        "Tests pass",
+        "Typecheck passes"
+      ],
+      "priority": 20,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-021",
+      "title": "Implement job and run telemetry write service",
+      "description": "As a developer, I want shared job telemetry write behavior so later batch schedulers and admin surfaces can record run history consistently.",
+      "acceptanceCriteria": [
+        "Implement shared service methods for creating and updating job run records in the JSON store.",
+        "Define a minimal explicit Phase 1 telemetry contract with job_run_id, job_name, status, started_at, ended_at, summary, and optional detail records so later monitoring slices can extend it without breaking stored data.",
+        "Limit Phase 1 statuses to a documented minimal set such as pending, running, succeeded, and failed unless a concrete later-phase requirement in the repository requires more.",
+        "Keep the service framework-agnostic and independent of actual schedule execution in Phase 1.",
+        "Add pytest coverage for job run creation, transition updates, and invalid state changes.",
+        "Tests pass",
+        "Typecheck passes"
+      ],
+      "priority": 21,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-022",
+      "title": "Document Phase 1 service contracts and deferred behavior",
+      "description": "As a developer, I want the Phase 1 service boundaries documented so later slices know which logic already exists and what remains deferred.",
+      "acceptanceCriteria": [
+        "Document the public domain-service contracts created in Phase 1 in backend docs or output/docs.",
+        "Document explicitly which behaviors are deferred to Phase 2 or later, especially endpoint surfaces and UI flows.",
+        "Document any known gaps where Phase 1 had to infer behavior from incomplete flat-file evidence.",
+        "Keep documentation concise and implementation-oriented.",
+        "Typecheck passes"
+      ],
+      "priority": 22,
       "passes": true,
       "notes": ""
     }
