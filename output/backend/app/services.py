@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from app.domain.auth import AuthenticationService
+from app.domain.job_telemetry import JobTelemetryService
 from app.domain.lookups import LookupService
 from app.domain.posting import PostingService
 from app.domain.report_requests import ReportRequestService
@@ -45,3 +46,8 @@ def build_posting_service(state: BackendState) -> PostingService:
 def build_report_request_service(state: BackendState) -> ReportRequestService:
     """Create the shared report-request capture and retrieval service."""
     return ReportRequestService(state.paths)
+
+
+def build_job_telemetry_service(state: BackendState) -> JobTelemetryService:
+    """Create the shared job-run telemetry write service."""
+    return JobTelemetryService(state.paths)

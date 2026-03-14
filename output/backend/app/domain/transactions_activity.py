@@ -43,7 +43,7 @@ class ReportRequestType(StrEnum):
 class JobRunStatus(StrEnum):
     """Canonical lifecycle states for persisted job runs."""
 
-    QUEUED = "queued"
+    PENDING = "pending"
     RUNNING = "running"
     SUCCEEDED = "succeeded"
     FAILED = "failed"
@@ -113,10 +113,9 @@ class JobRunRecord(BaseModel):
     job_run_id: str = Field(min_length=1, max_length=64)
     job_name: str = Field(min_length=1, max_length=100)
     status: JobRunStatus
-    queued_at: datetime
     started_at: datetime | None = None
-    completed_at: datetime | None = None
-    error_message: str | None = None
+    ended_at: datetime | None = None
+    summary: str | None = Field(default=None, max_length=500)
 
 
 class JobRunDetailRecord(BaseModel):

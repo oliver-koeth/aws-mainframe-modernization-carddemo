@@ -240,9 +240,9 @@ def test_transaction_activity_json_serialization_contract() -> None:
         job_run_id="daily-report-20260310-1",
         job_name="daily-report",
         status=JobRunStatus.SUCCEEDED,
-        queued_at=datetime(2026, 3, 10, 16, 50, 2),
         started_at=datetime(2026, 3, 10, 16, 50, 3),
-        completed_at=datetime(2026, 3, 10, 16, 50, 4),
+        ended_at=datetime(2026, 3, 10, 16, 50, 4),
+        summary="Generated daily report",
     )
     job_run_detail = JobRunDetailRecord(
         job_run_id="daily-report-20260310-1",
@@ -267,10 +267,9 @@ def test_transaction_activity_json_serialization_contract() -> None:
         "job_run_id": "daily-report-20260310-1",
         "job_name": "daily-report",
         "status": "succeeded",
-        "queued_at": "2026-03-10T16:50:02",
         "started_at": "2026-03-10T16:50:03",
-        "completed_at": "2026-03-10T16:50:04",
-        "error_message": None,
+        "ended_at": "2026-03-10T16:50:04",
+        "summary": "Generated daily report",
     }
     assert job_run_detail.model_dump(mode="json") == {
         "job_run_id": "daily-report-20260310-1",

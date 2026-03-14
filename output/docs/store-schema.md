@@ -35,6 +35,12 @@ The initial Phase 1 metadata contract is:
 - `job_runs`: batch run headers for later monitoring and scheduling slices.
 - `job_run_details`: detailed job run events or per-step telemetry associated with `job_runs`.
 
+The current Phase 1 job telemetry contract is intentionally minimal:
+
+- `operations.job_runs[]` rows persist `job_run_id`, `job_name`, `status`, `started_at`, `ended_at`, and optional `summary`.
+- `status` is limited to `pending`, `running`, `succeeded`, and `failed`.
+- `operations.job_run_details[]` rows persist `job_run_id`, `sequence_number`, `recorded_at`, `level`, `message`, and optional JSON `context`.
+
 All collections are present even when empty. Later stories may refine the record shape inside each collection, but they should not add or remove top-level collections without a schema-version change.
 
 ## Versioning Rules

@@ -1,5 +1,6 @@
 # Ralph Progress Log
 ## Codebase Patterns
+- Phase 1 job telemetry should stay in `operations.job_runs` and `operations.job_run_details`: create runs as `pending`, allow only `pending -> running -> succeeded` with `failed` allowed from `pending` or `running`, and assign detail `sequence_number` values by scanning persisted detail rows in store order for that `job_run_id`.
 - For flat-file modernization stories, document both `app/data/ASCII.seed` bootstrap sources and `app/data/ASCII` runtime-managed files; `init_gnucobol_data.sh` and `reset_gnucobol_data.sh` create or reset operational files like `dateparm.txt`, `dailytran_pending.txt`, and `tranrept_requests.txt` even when those files do not have seed counterparts.
 - Runtime-managed imports still belong in `output/backend/app/seed_import.py`: read copybook-backed seed families from `app/data/ASCII.seed`, but source `tranrept_requests.txt` from `app/data/ASCII` and normalize a missing runtime log to an empty `report_requests` collection.
 - The authoritative `store.json` root contract lives in `output/backend/app/models.py` `default_store_document()` and is enforced by `output/backend/app/storage.py`; future stories should add fields inside declared collections or bump schema version intentionally instead of reshaping the root object ad hoc.
@@ -260,4 +261,16 @@ Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scri
   - `CORPT00C` does not check for duplicate report requests before appending to `tranrept_requests.txt`, so later API or batch surfaces should preserve repeated requests rather than inferring a uniqueness rule that the runtime does not have.
   - Monthly and yearly report windows are runtime-derived from the current date; only custom requests carry explicit start/end inputs through persistence.
   - Retrieval helpers over `report_requests[]` should validate both the stored request row shape and the referenced `users[]` row up front so corrupted store data stays on one deterministic consistency-error path.
+---
+## 2026-03-14 16:00:07 CET - US-021
+Codex output: /Users/Oliver.Koeth/work/aws-mainframe-modernization-carddemo/scripts/ralph/.codex-last-message-iter-1.txt
+- Added `JobTelemetryService` under `output/backend/app/domain/job_telemetry.py` with framework-agnostic create/start/complete/fail/detail methods backed by `store.json`, plus deterministic validation for duplicate run IDs, legal status transitions, timestamp ordering, and dangling persisted detail rows.
+- Updated the canonical Phase 1 telemetry contract to use `job_run_id`, `job_name`, `status`, `started_at`, `ended_at`, and optional `summary`, wired the service through backend exports/service builders, and documented the minimal status set and deferred scheduler/API behavior in backend docs.
+- Added pytest coverage for successful run creation, run transitions, detail appends, duplicate-ID rejection, illegal lifecycle transitions, and persisted telemetry consistency failures.
+- Verified `.venv/bin/python -c "import app.main"`, `.venv/bin/python -m mypy app`, and `.venv/bin/python -m pytest` from `output/backend`.
+- Files changed: `AGENTS.md`, `output/backend/README.md`, `output/backend/app/domain/__init__.py`, `output/backend/app/domain/job_telemetry.py`, `output/backend/app/domain/transactions_activity.py`, `output/backend/app/services.py`, `output/backend/tests/test_job_telemetry.py`, `output/backend/tests/test_transaction_activity.py`, `output/docs/record-layouts.md`, `output/docs/store-schema.md`, `output/docs/transaction-activity-records.md`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - Keep the persisted job-run lifecycle narrow until a later story proves a need for more states; `pending`, `running`, `succeeded`, and `failed` are enough for current batch telemetry and keep state-machine validation simple.
+  - Validate both `operations.job_runs` and `operations.job_run_details` through canonical Pydantic models before mutating telemetry so malformed stored rows surface as deterministic consistency errors instead of partially applying updates.
+  - Job-run detail sequencing should be append-order based per `job_run_id`; do not derive it from timestamps or global max values if later monitoring features add richer detail payloads.
 ---

@@ -84,6 +84,31 @@ Schedule declarations live in `schedules.json`. Future scheduler and batch stori
 
 Shared JSON writes go through `app.storage`, which serializes updates with a same-directory `.lock` file per target JSON document before performing a temp-file-plus-rename replacement. Future API and batch code should keep using `write_store`, `write_schedules`, or `write_json_file` directly instead of implementing ad hoc write locks at call sites.
 
+## Job Telemetry Service Contracts
+
+Phase 1 now exposes `JobTelemetryService` under `app.domain.job_telemetry` for durable batch run headers and detail events without introducing a scheduler or monitoring API yet.
+
+- `create_job_run()` appends a new `operations.job_runs[]` row in `pending` status with `job_run_id`, `job_name`, and optional `summary`.
+- `start_job_run()` transitions a persisted run from `pending` to `running` and stamps `started_at`.
+- `complete_job_run()` transitions a persisted run from `running` to `succeeded` and stamps `ended_at`.
+- `fail_job_run()` transitions a persisted run from either `pending` or `running` to `failed` and stamps `ended_at`.
+- `append_job_run_detail()` appends one `operations.job_run_details[]` row for an existing run, assigning the next `sequence_number` by persisted order for that `job_run_id`.
+
+The minimal persisted Phase 1 header contract is:
+
+```json
+{
+  "job_run_id": "nightly-20260314-01",
+  "job_name": "nightly-settlement",
+  "status": "running",
+  "started_at": "2026-03-14T09:31:00",
+  "ended_at": null,
+  "summary": "Importing pending transactions"
+}
+```
+
+Phase 1 intentionally limits statuses to `pending`, `running`, `succeeded`, and `failed`. The service rejects illegal terminal transitions such as `pending -> succeeded` or any update after `succeeded`/`failed` so later scheduler or monitoring slices inherit one deterministic lifecycle contract.
+
 ## Authentication And Session Lookup
 
 Phase 1 now includes a framework-agnostic authentication service under `app.domain.auth`, built from the authoritative GNUCobol sign-on program `app/cbl/COSGN00C.cbl` plus the user-maintenance persistence rules in `app/cbl/GCUSRSEC.cbl`.

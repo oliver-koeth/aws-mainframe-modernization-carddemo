@@ -80,6 +80,7 @@ The canonical store envelope is documented in `output/docs/store-schema.md`. Pha
 
 - `CVTRA07Y` is authoritative for the printable report-detail layout, but Phase 1 defines only the `TransactionReportDetailRecord` contract. No report-output flat file is parsed yet because the current runtime persists requests and transactions, not rendered report lines.
 - `JobRunRecord` and `JobRunDetailRecord` have no legacy flat-file source. They are Phase 1 JSON persistence contracts reserved under `operations.*` so later batch-monitoring stories can write durable telemetry without reshaping `store.json`.
+- Current Phase 1 telemetry headers are intentionally limited to `job_run_id`, `job_name`, `status`, `started_at`, `ended_at`, and optional `summary`; detail rows carry `sequence_number`, `recorded_at`, `level`, `message`, and optional JSON `context`.
 - Runtime-managed files such as `tranrept_requests.txt` may be empty after reset scripts. Empty operational datasets are still represented by present-but-empty collections in `store.json`.
 
 ## Supporting References

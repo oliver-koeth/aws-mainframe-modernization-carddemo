@@ -48,6 +48,15 @@ from .report_requests import (
     ReportRequestStoreConsistencyError,
     ReportRequestValidationError,
 )
+from .job_telemetry import (
+    JobTelemetryCreateRequest,
+    JobTelemetryDetailCreateRequest,
+    JobTelemetryNotFoundError,
+    JobTelemetryService,
+    JobTelemetryServiceError,
+    JobTelemetryStoreConsistencyError,
+    JobTelemetryValidationError,
+)
 from .accounts import (
     ACCOUNT_RECORD_WIDTH,
     CARD_ACCOUNT_XREF_RECORD_WIDTH,
@@ -151,6 +160,13 @@ __all__ = [
     "ReportRequestServiceError",
     "ReportRequestStoreConsistencyError",
     "ReportRequestValidationError",
+    "JobTelemetryCreateRequest",
+    "JobTelemetryDetailCreateRequest",
+    "JobTelemetryNotFoundError",
+    "JobTelemetryService",
+    "JobTelemetryServiceError",
+    "JobTelemetryStoreConsistencyError",
+    "JobTelemetryValidationError",
     "ACCOUNT_RECORD_WIDTH",
     "CARD_ACCOUNT_XREF_RECORD_WIDTH",
     "CARD_RECORD_WIDTH",

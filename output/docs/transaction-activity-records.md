@@ -41,6 +41,24 @@ The GNUCobol flat-file runtime is authoritative for these records. `CVTRA05Y` an
 - Persist job telemetry in `store.json` under `operations.job_runs` and `operations.job_run_details`; no separate telemetry file is introduced in Phase 1.
 - Preserve source fields that later slices do not yet consume, such as transaction filler text and disclosure/report metadata already represented in the canonical models, instead of silently dropping them during import.
 
+## Job Telemetry Service
+
+Phase 1 now exposes `JobTelemetryService` under `output/backend/app/domain/job_telemetry.py` for durable run-history writes without introducing actual batch execution yet.
+
+- `create_job_run()` appends a `pending` `JobRunRecord` with `job_run_id`, `job_name`, and optional `summary`.
+- `start_job_run()` transitions a run from `pending` to `running` and sets `started_at`.
+- `complete_job_run()` transitions a run from `running` to `succeeded` and sets `ended_at`.
+- `fail_job_run()` transitions a run from `pending` or `running` to `failed` and sets `ended_at`.
+- `append_job_run_detail()` appends `JobRunDetailRecord` rows in persisted order, using the next `sequence_number` for that `job_run_id`.
+
+Current validation rules are:
+
+- accept only `pending`, `running`, `succeeded`, and `failed` as persisted statuses
+- reject duplicate `job_run_id` values
+- reject illegal lifecycle transitions such as `pending -> succeeded`, `running -> running`, or any change after `succeeded`/`failed`
+- reject terminal updates whose `ended_at` would be earlier than the persisted `started_at`
+- raise a deterministic store-consistency error when persisted run headers or detail rows are malformed, duplicated, or reference missing `job_run_id` values
+
 ## Transaction Creation Service
 
 Phase 1 now exposes `TransactionService` under `output/backend/app/domain/transactions.py` for the `COTRN02C` transaction-add flow. The service is storage-backed and framework-agnostic: it validates raw transaction-add inputs, resolves the account/card pair through the shared lookup service, and appends a canonical `TransactionRecord` into `store.json`.
