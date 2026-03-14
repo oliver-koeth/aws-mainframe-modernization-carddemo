@@ -6,6 +6,8 @@ The canonical FastAPI package lives in `app/`, with placeholder modules for APIs
 
 The scaffold backend currently exposes `GET /health`, plus temporary `GET /jobs`, `GET /accounts`, and `GET /transactions` placeholder collection endpoints. Those collection routes are Phase 0 scaffold contracts only and intentionally return empty JSON arrays until business migration stories replace them.
 
+The current Phase 1 domain-service boundaries and deferred behaviors are summarized in `output/docs/phase-1-service-contracts.md`.
+
 ## Setup
 
 Create or refresh the local virtual environment from this directory:
